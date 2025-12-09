@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { portfoliosAPI, productsAPI, Portfolio, Product, PortfolioInstrument, BucketType, PortfolioRiskProfile } from '@/lib/api'
+import { portfoliosAPI, productsAPI, Portfolio, Product, PortfolioInstrument, BucketType, type PortfolioRiskProfile } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -232,11 +232,14 @@ export default function Portfolios() {
           ...profile,
           instruments: profile.instruments.map((inst, i) => {
             if (i === index) {
-              // Приводим bucket_type к правильному типу
               if (field === 'bucket_type') {
-                return { ...inst, [field]: (value === 'INITIAL_CAPITAL' || value === 'TOP_UP' ? value : 'INITIAL_CAPITAL') as BucketType }
+                const typedValue = (value === 'INITIAL_CAPITAL' || value === 'TOP_UP' ? value : 'INITIAL_CAPITAL') as BucketType;
+                return { ...inst, bucket_type: typedValue };
               }
-              return { ...inst, [field]: value }
+              if (field === 'product_id' || field === 'share_percent' || field === 'order_index') {
+                return { ...inst, [field]: value };
+              }
+              return inst;
             }
             return inst
           }),
