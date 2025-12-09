@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { portfoliosAPI, productsAPI, Portfolio, Product, PortfolioInstrument, BucketType } from '@/lib/api'
+import { portfoliosAPI, productsAPI, Portfolio, Product, PortfolioInstrument, BucketType, PortfolioRiskProfile } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -138,23 +138,23 @@ export default function Portfolios() {
           : 'INITIAL_CAPITAL') as BucketType,
       })),
     })) || [
-      {
-        profile_type: 'CONSERVATIVE' as const,
-        potential_yield_percent: 0,
-        instruments: [],
-      },
-      {
-        profile_type: 'BALANCED' as const,
-        potential_yield_percent: 0,
-        instruments: [],
-      },
-      {
-        profile_type: 'AGGRESSIVE' as const,
-        potential_yield_percent: 0,
-        instruments: [],
-      },
-    ]
-    
+        {
+          profile_type: 'CONSERVATIVE' as const,
+          potential_yield_percent: 0,
+          instruments: [],
+        },
+        {
+          profile_type: 'BALANCED' as const,
+          potential_yield_percent: 0,
+          instruments: [],
+        },
+        {
+          profile_type: 'AGGRESSIVE' as const,
+          potential_yield_percent: 0,
+          instruments: [],
+        },
+      ]
+
     setFormData({
       name: portfolio.name,
       currency: portfolio.currency,
@@ -194,9 +194,9 @@ export default function Portfolios() {
   }
 
   const updateRiskProfile = (profileType: string, field: string, value: any) => {
-    const riskProfiles = formData.riskProfiles?.map((profile) =>
+    const riskProfiles = (formData.riskProfiles?.map((profile) =>
       profile.profile_type === profileType ? { ...profile, [field]: value } : profile
-    ) || []
+    ) || []) as PortfolioRiskProfile[]
     setFormData({ ...formData, riskProfiles })
   }
 
@@ -204,17 +204,17 @@ export default function Portfolios() {
     const riskProfiles = formData.riskProfiles?.map((profile) =>
       profile.profile_type === profileType
         ? {
-            ...profile,
-            instruments: [
-              ...profile.instruments,
-              {
-                product_id: products[0]?.id || 0,
-                bucket_type: 'INITIAL_CAPITAL' as BucketType,
-                share_percent: 0,
-                order_index: profile.instruments.length,
-              },
-            ],
-          }
+          ...profile,
+          instruments: [
+            ...profile.instruments,
+            {
+              product_id: products[0]?.id || 0,
+              bucket_type: 'INITIAL_CAPITAL' as BucketType,
+              share_percent: 0,
+              order_index: profile.instruments.length,
+            },
+          ],
+        }
         : profile
     ) || []
     setFormData({ ...formData, riskProfiles })
@@ -229,18 +229,18 @@ export default function Portfolios() {
     const riskProfiles = formData.riskProfiles?.map((profile) =>
       profile.profile_type === profileType
         ? {
-            ...profile,
-            instruments: profile.instruments.map((inst, i) => {
-              if (i === index) {
-                // Приводим bucket_type к правильному типу
-                if (field === 'bucket_type') {
-                  return { ...inst, [field]: (value === 'INITIAL_CAPITAL' || value === 'TOP_UP' ? value : 'INITIAL_CAPITAL') as BucketType }
-                }
-                return { ...inst, [field]: value }
+          ...profile,
+          instruments: profile.instruments.map((inst, i) => {
+            if (i === index) {
+              // Приводим bucket_type к правильному типу
+              if (field === 'bucket_type') {
+                return { ...inst, [field]: (value === 'INITIAL_CAPITAL' || value === 'TOP_UP' ? value : 'INITIAL_CAPITAL') as BucketType }
               }
-              return inst
-            }),
-          }
+              return { ...inst, [field]: value }
+            }
+            return inst
+          }),
+        }
         : profile
     ) || []
     setFormData({ ...formData, riskProfiles })
@@ -250,9 +250,9 @@ export default function Portfolios() {
     const riskProfiles = formData.riskProfiles?.map((profile) =>
       profile.profile_type === profileType
         ? {
-            ...profile,
-            instruments: profile.instruments.filter((_, i) => i !== index),
-          }
+          ...profile,
+          instruments: profile.instruments.filter((_, i) => i !== index),
+        }
         : profile
     ) || []
     setFormData({ ...formData, riskProfiles })
