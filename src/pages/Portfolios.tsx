@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { portfoliosAPI, productsAPI, Portfolio, Product, PortfolioRiskProfile, PortfolioInstrument } from '@/lib/api'
+import { portfoliosAPI, productsAPI, Portfolio, Product, PortfolioInstrument, BucketType } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -28,7 +28,7 @@ import {
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Plus, Edit, Trash2, Copy } from 'lucide-react'
+import { Plus, Edit, Trash2 } from 'lucide-react'
 
 export default function Portfolios() {
   const [portfolios, setPortfolios] = useState<Portfolio[]>([])
@@ -73,7 +73,20 @@ export default function Portfolios() {
         portfoliosAPI.list(),
         productsAPI.list(),
       ])
-      setPortfolios(portfoliosData)
+      // Нормализуем bucket_type в данных портфелей
+      const normalizedPortfolios = portfoliosData.map((portfolio) => ({
+        ...portfolio,
+        riskProfiles: portfolio.riskProfiles?.map((profile) => ({
+          ...profile,
+          instruments: profile.instruments.map((inst) => ({
+            ...inst,
+            bucket_type: (inst.bucket_type === 'INITIAL_CAPITAL' || inst.bucket_type === 'TOP_UP'
+              ? inst.bucket_type
+              : 'INITIAL_CAPITAL') as BucketType,
+          })),
+        })),
+      }))
+      setPortfolios(normalizedPortfolios)
       setProducts(productsData)
     } catch (error) {
       console.error('Failed to load data:', error)
@@ -115,6 +128,33 @@ export default function Portfolios() {
 
   const handleEdit = (portfolio: Portfolio) => {
     setEditingPortfolio(portfolio)
+    // Приводим bucket_type к правильному типу при загрузке данных
+    const normalizedRiskProfiles = portfolio.riskProfiles?.map((profile) => ({
+      ...profile,
+      instruments: profile.instruments.map((inst) => ({
+        ...inst,
+        bucket_type: (inst.bucket_type === 'INITIAL_CAPITAL' || inst.bucket_type === 'TOP_UP'
+          ? inst.bucket_type
+          : 'INITIAL_CAPITAL') as BucketType,
+      })),
+    })) || [
+      {
+        profile_type: 'CONSERVATIVE' as const,
+        potential_yield_percent: 0,
+        instruments: [],
+      },
+      {
+        profile_type: 'BALANCED' as const,
+        potential_yield_percent: 0,
+        instruments: [],
+      },
+      {
+        profile_type: 'AGGRESSIVE' as const,
+        potential_yield_percent: 0,
+        instruments: [],
+      },
+    ]
+    
     setFormData({
       name: portfolio.name,
       currency: portfolio.currency,
@@ -123,23 +163,7 @@ export default function Portfolios() {
       term_from_months: portfolio.term_from_months,
       term_to_months: portfolio.term_to_months,
       classes: portfolio.classes || [],
-      riskProfiles: portfolio.riskProfiles || [
-        {
-          profile_type: 'CONSERVATIVE',
-          potential_yield_percent: 0,
-          instruments: [],
-        },
-        {
-          profile_type: 'BALANCED',
-          potential_yield_percent: 0,
-          instruments: [],
-        },
-        {
-          profile_type: 'AGGRESSIVE',
-          potential_yield_percent: 0,
-          instruments: [],
-        },
-      ],
+      riskProfiles: normalizedRiskProfiles,
     })
     setIsDialogOpen(true)
   }
@@ -206,9 +230,16 @@ export default function Portfolios() {
       profile.profile_type === profileType
         ? {
             ...profile,
-            instruments: profile.instruments.map((inst, i) =>
-              i === index ? { ...inst, [field]: value } : inst
-            ),
+            instruments: profile.instruments.map((inst, i) => {
+              if (i === index) {
+                // Приводим bucket_type к правильному типу
+                if (field === 'bucket_type') {
+                  return { ...inst, [field]: (value === 'INITIAL_CAPITAL' || value === 'TOP_UP' ? value : 'INITIAL_CAPITAL') as BucketType }
+                }
+                return { ...inst, [field]: value }
+              }
+              return inst
+            }),
           }
         : profile
     ) || []

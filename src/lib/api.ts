@@ -94,9 +94,11 @@ export interface PortfolioRiskProfile {
   instruments: PortfolioInstrument[]
 }
 
+export type BucketType = 'INITIAL_CAPITAL' | 'TOP_UP'
+
 export interface PortfolioInstrument {
   product_id: number
-  bucket_type: 'INITIAL_CAPITAL' | 'TOP_UP'
+  bucket_type: BucketType
   share_percent: number
   order_index: number
 }
