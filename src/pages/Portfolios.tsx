@@ -209,7 +209,7 @@ export default function Portfolios() {
               ...profile.instruments,
               {
                 product_id: products[0]?.id || 0,
-                bucket_type: 'INITIAL_CAPITAL',
+                bucket_type: 'INITIAL_CAPITAL' as BucketType,
                 share_percent: 0,
                 order_index: profile.instruments.length,
               },
