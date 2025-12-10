@@ -188,8 +188,6 @@ export default function Products() {
                 <TableHead>Название</TableHead>
                 <TableHead>Тип</TableHead>
                 <TableHead>Валюта</TableHead>
-                <TableHead>Срок (мес.)</TableHead>
-                <TableHead>Сумма</TableHead>
                 <TableHead>Статус</TableHead>
                 <TableHead className="text-right">Действия</TableHead>
               </TableRow>
@@ -200,22 +198,6 @@ export default function Products() {
                   <TableCell className="font-medium">{product.name}</TableCell>
                   <TableCell>{product.product_type}</TableCell>
                   <TableCell>{product.currency}</TableCell>
-                  <TableCell>
-                    {(() => {
-                      const line = product.lines?.[0]
-                      const minTerm = product.min_term_months ?? line?.min_term_months ?? 0
-                      const maxTerm = product.max_term_months ?? line?.max_term_months ?? 0
-                      return `${minTerm} - ${maxTerm}`
-                    })()}
-                  </TableCell>
-                  <TableCell>
-                    {(() => {
-                      const line = product.lines?.[0]
-                      const minAmount = product.min_amount ?? line?.min_amount ?? 0
-                      const maxAmount = product.max_amount ?? line?.max_amount ?? 0
-                      return `${minAmount.toLocaleString()} - ${maxAmount.toLocaleString()}`
-                    })()}
-                  </TableCell>
                   <TableCell>
                     {product.is_default ? (
                       <span className="text-xs text-muted-foreground">По умолчанию</span>
@@ -311,52 +293,6 @@ export default function Products() {
                     <SelectItem value="EUR">EUR</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-4 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="min_term">Мин. срок (мес.)</Label>
-                <Input
-                  id="min_term"
-                  type="number"
-                  value={formData.min_term_months}
-                  onChange={(e) =>
-                    setFormData({ ...formData, min_term_months: parseInt(e.target.value) || 0 })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="max_term">Макс. срок (мес.)</Label>
-                <Input
-                  id="max_term"
-                  type="number"
-                  value={formData.max_term_months}
-                  onChange={(e) =>
-                    setFormData({ ...formData, max_term_months: parseInt(e.target.value) || 0 })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="min_amount">Мин. сумма</Label>
-                <Input
-                  id="min_amount"
-                  type="number"
-                  value={formData.min_amount}
-                  onChange={(e) =>
-                    setFormData({ ...formData, min_amount: parseFloat(e.target.value) || 0 })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="max_amount">Макс. сумма</Label>
-                <Input
-                  id="max_amount"
-                  type="number"
-                  value={formData.max_amount}
-                  onChange={(e) =>
-                    setFormData({ ...formData, max_amount: parseFloat(e.target.value) || 0 })
-                  }
-                />
               </div>
             </div>
 
