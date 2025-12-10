@@ -454,86 +454,75 @@ export default function Portfolios() {
               </div>
             </div>
 
-            <div className="space-y-4">
-              <Label>Риск-профили</Label>
-              <Tabs defaultValue="CONSERVATIVE" className="w-full">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="CONSERVATIVE">Консервативный</TabsTrigger>
-                  <TabsTrigger value="BALANCED">Сбалансированный</TabsTrigger>
-                  <TabsTrigger value="AGGRESSIVE">Агрессивный</TabsTrigger>
-                </TabsList>
-                {(['CONSERVATIVE', 'BALANCED', 'AGGRESSIVE'] as const).map((profileType) => {
-                  const profile = getRiskProfile(profileType)
-                  return (
-                    <TabsContent key={profileType} value={profileType} className="space-y-4">
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <Label>Стартовый капитал (Initial Capital)</Label>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => addInstrument(profileType, 'initial_capital')}
-                            >
-                              <Plus className="mr-2 h-4 w-4" />
-                              Добавить
-                            </Button>
-                          </div>
-                          {profile?.initial_capital && profile.initial_capital.length > 0 && (
-                            <div className="space-y-2">
-                              <div className="grid grid-cols-4 gap-2 text-sm font-medium">
-                                <div>Продукт</div>
-                                <div>Доля (%)</div>
-                                <div>Порядок</div>
-                                <div></div>
-                              </div>
-                              {profile.initial_capital.map((instrument, index) => (
-                                <div key={index} className="grid grid-cols-4 gap-2">
-                                  <Select
-                                    value={instrument.product_id.toString()}
-                                    onValueChange={(value) =>
-                                      updateInstrument(profileType, 'initial_capital', index, 'product_id', parseInt(value))
-                                    }
-                                  >
-                                    <SelectTrigger>
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {products.map((product) => (
-                                        <SelectItem key={product.id} value={product.id.toString()}>
-                                          {product.name}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                  <Input
-                                    type="number"
-                                    step="0.01"
-                                    value={instrument.share_percent}
-                                    onChange={(e) =>
-                                      updateInstrument(
-                                        profileType,
-                                        'initial_capital',
-                                        index,
-                                        'share_percent',
-                                        parseFloat(e.target.value) || 0
-                                      )
-                                    }
-                                  />
-                                  <Input
-                                    type="number"
-                                    value={instrument.order_index}
-                                    onChange={(e) =>
-                                      updateInstrument(
-                                        profileType,
-                                        'initial_capital',
-                                        index,
-                                        'order_index',
-                                        parseInt(e.target.value) || 0
-                                      )
-                                    }
-                                  />
+            <div className="space-y-6">
+              <Label className="text-lg font-semibold">Риск-профили</Label>
+              {(['CONSERVATIVE', 'BALANCED', 'AGGRESSIVE'] as const).map((profileType) => {
+                const profile = getRiskProfile(profileType)
+                const profileNames = {
+                  CONSERVATIVE: 'Консервативный',
+                  BALANCED: 'Сбалансированный',
+                  AGGRESSIVE: 'Агрессивный',
+                }
+                return (
+                  <div key={profileType} className="space-y-4 border-t pt-4">
+                    <h3 className="font-semibold text-base">Риск-профиль {profileNames[profileType]}</h3>
+                    
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label>Первоначальный капитал</Label>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => addInstrument(profileType, 'initial_capital')}
+                          >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Добавить
+                          </Button>
+                        </div>
+                        {profile?.initial_capital && profile.initial_capital.length > 0 ? (
+                          <div className="space-y-2">
+                            {profile.initial_capital.map((instrument, index) => {
+                              return (
+                                <div key={index} className="flex items-center gap-2 p-2 border rounded-md">
+                                  <div className="flex-1">
+                                    <Select
+                                      value={instrument.product_id.toString()}
+                                      onValueChange={(value) =>
+                                        updateInstrument(profileType, 'initial_capital', index, 'product_id', parseInt(value))
+                                      }
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {products.map((product) => (
+                                          <SelectItem key={product.id} value={product.id.toString()}>
+                                            {product.name}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div className="w-24">
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      value={instrument.share_percent}
+                                      onChange={(e) =>
+                                        updateInstrument(
+                                          profileType,
+                                          'initial_capital',
+                                          index,
+                                          'share_percent',
+                                          parseFloat(e.target.value) || 0
+                                        )
+                                      }
+                                      className="text-right"
+                                    />
+                                  </div>
+                                  <span className="w-8 text-sm">%</span>
                                   <Button
                                     type="button"
                                     variant="ghost"
@@ -543,86 +532,78 @@ export default function Portfolios() {
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
                                 </div>
-                              ))}
-                              <div className="text-sm text-muted-foreground">
-                                Итого: {calculateTotalShare(profile.initial_capital).toFixed(2)}%
-                                {calculateTotalShare(profile.initial_capital) !== 100 && (
-                                  <span className="text-destructive ml-2">
-                                    (должно быть 100%)
-                                  </span>
-                                )}
-                              </div>
+                              )
+                            })}
+                            <div className="text-sm text-muted-foreground">
+                              Итого: {calculateTotalShare(profile.initial_capital).toFixed(2)}%
+                              {calculateTotalShare(profile.initial_capital) !== 100 && (
+                                <span className="text-destructive ml-2">
+                                  (должно быть 100%)
+                                </span>
+                              )}
                             </div>
-                          )}
-                        </div>
-
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <Label>Пополнения (Initial Replenishment)</Label>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => addInstrument(profileType, 'initial_replenishment')}
-                            >
-                              <Plus className="mr-2 h-4 w-4" />
-                              Добавить
-                            </Button>
                           </div>
-                          {profile?.initial_replenishment && profile.initial_replenishment.length > 0 && (
-                            <div className="space-y-2">
-                              <div className="grid grid-cols-4 gap-2 text-sm font-medium">
-                                <div>Продукт</div>
-                                <div>Доля (%)</div>
-                                <div>Порядок</div>
-                                <div></div>
-                              </div>
-                              {profile.initial_replenishment.map((instrument, index) => (
-                                <div key={index} className="grid grid-cols-4 gap-2">
-                                  <Select
-                                    value={instrument.product_id.toString()}
-                                    onValueChange={(value) =>
-                                      updateInstrument(profileType, 'initial_replenishment', index, 'product_id', parseInt(value))
-                                    }
-                                  >
-                                    <SelectTrigger>
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {products.map((product) => (
-                                        <SelectItem key={product.id} value={product.id.toString()}>
-                                          {product.name}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                  <Input
-                                    type="number"
-                                    step="0.01"
-                                    value={instrument.share_percent}
-                                    onChange={(e) =>
-                                      updateInstrument(
-                                        profileType,
-                                        'initial_replenishment',
-                                        index,
-                                        'share_percent',
-                                        parseFloat(e.target.value) || 0
-                                      )
-                                    }
-                                  />
-                                  <Input
-                                    type="number"
-                                    value={instrument.order_index}
-                                    onChange={(e) =>
-                                      updateInstrument(
-                                        profileType,
-                                        'initial_replenishment',
-                                        index,
-                                        'order_index',
-                                        parseInt(e.target.value) || 0
-                                      )
-                                    }
-                                  />
+                        ) : (
+                          <p className="text-sm text-muted-foreground">Нет инструментов</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label>Пополнение капитала</Label>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => addInstrument(profileType, 'initial_replenishment')}
+                          >
+                            <Plus className="mr-2 h-4 w-4" />
+                            Добавить
+                          </Button>
+                        </div>
+                        {profile?.initial_replenishment && profile.initial_replenishment.length > 0 ? (
+                          <div className="space-y-2">
+                            {profile.initial_replenishment.map((instrument, index) => {
+                              const product = products.find(p => p.id === instrument.product_id)
+                              return (
+                                <div key={index} className="flex items-center gap-2 p-2 border rounded-md">
+                                  <div className="flex-1">
+                                    <Select
+                                      value={instrument.product_id.toString()}
+                                      onValueChange={(value) =>
+                                        updateInstrument(profileType, 'initial_replenishment', index, 'product_id', parseInt(value))
+                                      }
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {products.map((product) => (
+                                          <SelectItem key={product.id} value={product.id.toString()}>
+                                            {product.name}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div className="w-24">
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      value={instrument.share_percent}
+                                      onChange={(e) =>
+                                        updateInstrument(
+                                          profileType,
+                                          'initial_replenishment',
+                                          index,
+                                          'share_percent',
+                                          parseFloat(e.target.value) || 0
+                                        )
+                                      }
+                                      className="text-right"
+                                    />
+                                  </div>
+                                  <span className="w-8 text-sm">%</span>
                                   <Button
                                     type="button"
                                     variant="ghost"
@@ -632,23 +613,25 @@ export default function Portfolios() {
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
                                 </div>
-                              ))}
-                              <div className="text-sm text-muted-foreground">
-                                Итого: {calculateTotalShare(profile.initial_replenishment).toFixed(2)}%
-                                {calculateTotalShare(profile.initial_replenishment) !== 100 && profile.initial_replenishment.length > 0 && (
-                                  <span className="text-destructive ml-2">
-                                    (должно быть 100%)
-                                  </span>
-                                )}
-                              </div>
+                              )
+                            })}
+                            <div className="text-sm text-muted-foreground">
+                              Итого: {calculateTotalShare(profile.initial_replenishment).toFixed(2)}%
+                              {calculateTotalShare(profile.initial_replenishment) !== 100 && profile.initial_replenishment.length > 0 && (
+                                <span className="text-destructive ml-2">
+                                  (должно быть 100%)
+                                </span>
+                              )}
                             </div>
-                          )}
-                        </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">Нет инструментов</p>
+                        )}
                       </div>
-                    </TabsContent>
-                  )
-                })}
-              </Tabs>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
           <DialogFooter>
