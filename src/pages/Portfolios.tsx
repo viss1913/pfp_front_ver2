@@ -563,7 +563,6 @@ export default function Portfolios() {
                         {profile?.initial_replenishment && profile.initial_replenishment.length > 0 ? (
                           <div className="space-y-2">
                             {profile.initial_replenishment.map((instrument, index) => {
-                              const product = products.find(p => p.id === instrument.product_id)
                               return (
                                 <div key={index} className="flex items-center gap-2 p-2 border rounded-md">
                                   <div className="flex-1">
