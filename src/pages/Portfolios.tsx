@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { portfoliosAPI, productsAPI, Portfolio, Product, PortfolioInstrument, PortfolioRiskProfile } from '@/lib/api'
+import { portfoliosAPI, productsAPI, Portfolio, Product, PortfolioInstrument, PortfolioRiskProfile, PortfolioClass } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -27,14 +27,16 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Plus, Edit, Trash2 } from 'lucide-react'
+import { Plus, Edit, Trash2, X } from 'lucide-react'
 
 export default function Portfolios() {
   const [portfolios, setPortfolios] = useState<Portfolio[]>([])
   const [products, setProducts] = useState<Product[]>([])
+  const [classes, setClasses] = useState<PortfolioClass[]>([])
   const [loading, setLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingPortfolio, setEditingPortfolio] = useState<Portfolio | null>(null)
+  const [isClassesSelectOpen, setIsClassesSelectOpen] = useState(false)
   const [formData, setFormData] = useState<Partial<Portfolio>>({
     name: '',
     currency: 'RUB',
@@ -72,12 +74,14 @@ export default function Portfolios() {
 
   const loadData = async () => {
     try {
-      const [portfoliosData, productsData] = await Promise.all([
+      const [portfoliosData, productsData, classesData] = await Promise.all([
         portfoliosAPI.list(),
         productsAPI.list(),
+        portfoliosAPI.getClasses(),
       ])
       setPortfolios(portfoliosData)
       setProducts(productsData)
+      setClasses(classesData)
     } catch (error) {
       console.error('Failed to load data:', error)
     } finally {
@@ -451,6 +455,87 @@ export default function Portfolios() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="classes">Тип цели *</Label>
+              <div className="relative">
+                <div
+                  className="flex min-h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={() => setIsClassesSelectOpen(!isClassesSelectOpen)}
+                >
+                  {formData.classes && formData.classes.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {formData.classes.map((classId) => {
+                        const classItem = classes.find(c => c.id === classId)
+                        if (!classItem) return null
+                        return (
+                          <div
+                            key={classId}
+                            className="flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-sm"
+                          >
+                            <span>{classItem.name}</span>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setFormData({
+                                  ...formData,
+                                  classes: formData.classes?.filter(id => id !== classId) || [],
+                                })
+                              }}
+                              className="ml-1 hover:text-destructive"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground">Выберите типы целей</span>
+                  )}
+                </div>
+                {isClassesSelectOpen && (
+                  <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border bg-popover shadow-md">
+                    <div className="p-1">
+                      {classes.map((classItem) => {
+                        const isSelected = formData.classes?.includes(classItem.id)
+                        return (
+                          <div
+                            key={classItem.id}
+                            className={`relative flex w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground ${
+                              isSelected ? 'bg-accent' : ''
+                            }`}
+                            onClick={() => {
+                              const currentClasses = formData.classes || []
+                              if (isSelected) {
+                                setFormData({
+                                  ...formData,
+                                  classes: currentClasses.filter(id => id !== classItem.id),
+                                })
+                              } else {
+                                setFormData({
+                                  ...formData,
+                                  classes: [...currentClasses, classItem.id],
+                                })
+                              }
+                            }}
+                          >
+                            {classItem.name}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+              {isClassesSelectOpen && (
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setIsClassesSelectOpen(false)}
+                />
+              )}
             </div>
 
             <div className="space-y-6">

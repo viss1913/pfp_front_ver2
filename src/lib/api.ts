@@ -105,6 +105,18 @@ export interface Portfolio {
   risk_profiles?: PortfolioRiskProfile[]
 }
 
+export interface PortfolioClass {
+  id: number
+  code: string
+  name: string
+}
+
+export interface PortfolioClass {
+  id: number
+  code: string
+  name: string
+}
+
 export interface PortfolioRiskProfile {
   profile_type: 'CONSERVATIVE' | 'BALANCED' | 'AGGRESSIVE'
   initial_capital: PortfolioInstrument[]
@@ -187,6 +199,10 @@ export const portfoliosAPI = {
   },
   clone: async (id: number): Promise<Portfolio> => {
     const response = await api.post<Portfolio>(`/pfp/portfolios/${id}/clone`)
+    return response.data
+  },
+  getClasses: async (): Promise<PortfolioClass[]> => {
+    const response = await api.get<PortfolioClass[]>('/pfp/portfolios/classes')
     return response.data
   },
 }
