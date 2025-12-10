@@ -287,7 +287,7 @@ export default function Portfolios() {
                     {portfolio.term_from_months} - {portfolio.term_to_months}
                   </TableCell>
                   <TableCell>
-                    {portfolio.amount_from.toLocaleString()} - {portfolio.amount_to.toLocaleString()}
+                    {(portfolio.amount_from ?? 0).toLocaleString()} - {(portfolio.amount_to ?? 0).toLocaleString()}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">

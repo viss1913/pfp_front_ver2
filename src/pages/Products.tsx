@@ -197,7 +197,7 @@ export default function Products() {
                     {product.min_term_months} - {product.max_term_months}
                   </TableCell>
                   <TableCell>
-                    {product.min_amount.toLocaleString()} - {product.max_amount.toLocaleString()}
+                    {(product.min_amount ?? 0).toLocaleString()} - {(product.max_amount ?? 0).toLocaleString()}
                   </TableCell>
                   <TableCell>
                     {product.is_default ? (
