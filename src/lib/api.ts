@@ -84,21 +84,24 @@ export interface Portfolio {
   amount_to: number
   term_from_months: number
   term_to_months: number
-  classes?: any[]
-  riskProfiles?: PortfolioRiskProfile[]
+  age_from?: number
+  age_to?: number
+  investor_type?: string
+  gender?: string
+  classes?: number[]
+  risk_profiles?: PortfolioRiskProfile[]
 }
 
 export interface PortfolioRiskProfile {
   profile_type: 'CONSERVATIVE' | 'BALANCED' | 'AGGRESSIVE'
-  potential_yield_percent: number
-  instruments: PortfolioInstrument[]
+  initial_capital: PortfolioInstrument[]
+  initial_replenishment: PortfolioInstrument[]
 }
 
-export type BucketType = 'INITIAL_CAPITAL' | 'TOP_UP'
+export type BucketType = 'INITIAL_CAPITAL' | 'INITIAL_REPLENISHMENT'
 
 export interface PortfolioInstrument {
   product_id: number
-  bucket_type: BucketType
   share_percent: number
   order_index: number
 }

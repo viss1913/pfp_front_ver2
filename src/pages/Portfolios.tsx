@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { portfoliosAPI, productsAPI, Portfolio, Product, PortfolioInstrument, BucketType, type PortfolioRiskProfile } from '@/lib/api'
+import { portfoliosAPI, productsAPI, Portfolio, Product, PortfolioInstrument, PortfolioRiskProfile } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -43,22 +43,26 @@ export default function Portfolios() {
     amount_to: 0,
     term_from_months: 0,
     term_to_months: 0,
+    age_from: undefined,
+    age_to: undefined,
+    investor_type: undefined,
+    gender: undefined,
     classes: [],
-    riskProfiles: [
+    risk_profiles: [
       {
         profile_type: 'CONSERVATIVE',
-        potential_yield_percent: 0,
-        instruments: [],
+        initial_capital: [],
+        initial_replenishment: [],
       },
       {
         profile_type: 'BALANCED',
-        potential_yield_percent: 0,
-        instruments: [],
+        initial_capital: [],
+        initial_replenishment: [],
       },
       {
         profile_type: 'AGGRESSIVE',
-        potential_yield_percent: 0,
-        instruments: [],
+        initial_capital: [],
+        initial_replenishment: [],
       },
     ],
   })
@@ -73,20 +77,7 @@ export default function Portfolios() {
         portfoliosAPI.list(),
         productsAPI.list(),
       ])
-      // Нормализуем bucket_type в данных портфелей
-      const normalizedPortfolios = portfoliosData.map((portfolio) => ({
-        ...portfolio,
-        riskProfiles: portfolio.riskProfiles?.map((profile) => ({
-          ...profile,
-          instruments: profile.instruments.map((inst) => ({
-            ...inst,
-            bucket_type: (inst.bucket_type === 'INITIAL_CAPITAL' || inst.bucket_type === 'TOP_UP'
-              ? inst.bucket_type
-              : 'INITIAL_CAPITAL') as BucketType,
-          })),
-        })),
-      }))
-      setPortfolios(normalizedPortfolios)
+      setPortfolios(portfoliosData)
       setProducts(productsData)
     } catch (error) {
       console.error('Failed to load data:', error)
@@ -104,22 +95,26 @@ export default function Portfolios() {
       amount_to: 0,
       term_from_months: 0,
       term_to_months: 0,
+      age_from: undefined,
+      age_to: undefined,
+      investor_type: undefined,
+      gender: undefined,
       classes: [],
-      riskProfiles: [
+      risk_profiles: [
         {
           profile_type: 'CONSERVATIVE',
-          potential_yield_percent: 0,
-          instruments: [],
+          initial_capital: [],
+          initial_replenishment: [],
         },
         {
           profile_type: 'BALANCED',
-          potential_yield_percent: 0,
-          instruments: [],
+          initial_capital: [],
+          initial_replenishment: [],
         },
         {
           profile_type: 'AGGRESSIVE',
-          potential_yield_percent: 0,
-          instruments: [],
+          initial_capital: [],
+          initial_replenishment: [],
         },
       ],
     })
@@ -128,33 +123,6 @@ export default function Portfolios() {
 
   const handleEdit = (portfolio: Portfolio) => {
     setEditingPortfolio(portfolio)
-    // Приводим bucket_type к правильному типу при загрузке данных
-    const normalizedRiskProfiles = portfolio.riskProfiles?.map((profile) => ({
-      ...profile,
-      instruments: profile.instruments.map((inst) => ({
-        ...inst,
-        bucket_type: (inst.bucket_type === 'INITIAL_CAPITAL' || inst.bucket_type === 'TOP_UP'
-          ? inst.bucket_type
-          : 'INITIAL_CAPITAL') as BucketType,
-      })),
-    })) || [
-        {
-          profile_type: 'CONSERVATIVE' as const,
-          potential_yield_percent: 0,
-          instruments: [],
-        },
-        {
-          profile_type: 'BALANCED' as const,
-          potential_yield_percent: 0,
-          instruments: [],
-        },
-        {
-          profile_type: 'AGGRESSIVE' as const,
-          potential_yield_percent: 0,
-          instruments: [],
-        },
-      ]
-
     setFormData({
       name: portfolio.name,
       currency: portfolio.currency,
@@ -162,8 +130,28 @@ export default function Portfolios() {
       amount_to: portfolio.amount_to,
       term_from_months: portfolio.term_from_months,
       term_to_months: portfolio.term_to_months,
+      age_from: portfolio.age_from,
+      age_to: portfolio.age_to,
+      investor_type: portfolio.investor_type,
+      gender: portfolio.gender,
       classes: portfolio.classes || [],
-      riskProfiles: normalizedRiskProfiles,
+      risk_profiles: portfolio.risk_profiles || [
+        {
+          profile_type: 'CONSERVATIVE',
+          initial_capital: [],
+          initial_replenishment: [],
+        },
+        {
+          profile_type: 'BALANCED',
+          initial_capital: [],
+          initial_replenishment: [],
+        },
+        {
+          profile_type: 'AGGRESSIVE',
+          initial_capital: [],
+          initial_replenishment: [],
+        },
+      ],
     })
     setIsDialogOpen(true)
   }
@@ -193,76 +181,67 @@ export default function Portfolios() {
     }
   }
 
-  const updateRiskProfile = (profileType: string, field: string, value: any) => {
-    const riskProfiles = (formData.riskProfiles?.map((profile) =>
-      profile.profile_type === profileType ? { ...profile, [field]: value } : profile
-    ) || []) as PortfolioRiskProfile[]
-    setFormData({ ...formData, riskProfiles })
-  }
-
-  const addInstrument = (profileType: string) => {
-    const riskProfiles = formData.riskProfiles?.map((profile) =>
+  const addInstrument = (profileType: string, bucketType: 'initial_capital' | 'initial_replenishment') => {
+    const riskProfiles = formData.risk_profiles?.map((profile) =>
       profile.profile_type === profileType
         ? {
-          ...profile,
-          instruments: [
-            ...profile.instruments,
-            {
-              product_id: products[0]?.id || 0,
-              bucket_type: 'INITIAL_CAPITAL' as BucketType,
-              share_percent: 0,
-              order_index: profile.instruments.length,
-            },
-          ],
-        }
+            ...profile,
+            [bucketType]: [
+              ...profile[bucketType],
+              {
+                product_id: products[0]?.id || 0,
+                share_percent: 0,
+                order_index: profile[bucketType].length,
+              },
+            ],
+          }
         : profile
     ) || []
-    setFormData({ ...formData, riskProfiles })
+    setFormData({ ...formData, risk_profiles: riskProfiles })
   }
 
   const updateInstrument = (
     profileType: string,
+    bucketType: 'initial_capital' | 'initial_replenishment',
     index: number,
     field: keyof PortfolioInstrument,
     value: any
   ) => {
-    const riskProfiles = formData.riskProfiles?.map((profile) =>
+    const riskProfiles = formData.risk_profiles?.map((profile) =>
       profile.profile_type === profileType
         ? {
-          ...profile,
-          instruments: profile.instruments.map((inst, i) => {
-            if (i === index) {
-              if (field === 'bucket_type') {
-                const typedValue = (value === 'INITIAL_CAPITAL' || value === 'TOP_UP' ? value : 'INITIAL_CAPITAL') as BucketType;
-                return { ...inst, bucket_type: typedValue };
-              }
-              if (field === 'product_id' || field === 'share_percent' || field === 'order_index') {
-                return { ...inst, [field]: value };
-              }
-              return inst;
-            }
-            return inst
-          }),
-        }
+            ...profile,
+            [bucketType]: profile[bucketType].map((inst, i) =>
+              i === index ? { ...inst, [field]: value } : inst
+            ),
+          }
         : profile
     ) || []
-    setFormData({ ...formData, riskProfiles })
+    setFormData({ ...formData, risk_profiles: riskProfiles })
   }
 
-  const removeInstrument = (profileType: string, index: number) => {
-    const riskProfiles = formData.riskProfiles?.map((profile) =>
+  const removeInstrument = (
+    profileType: string,
+    bucketType: 'initial_capital' | 'initial_replenishment',
+    index: number
+  ) => {
+    const riskProfiles = formData.risk_profiles?.map((profile) =>
       profile.profile_type === profileType
         ? {
-          ...profile,
-          instruments: profile.instruments.filter((_, i) => i !== index),
-        }
+            ...profile,
+            [bucketType]: profile[bucketType].filter((_, i) => i !== index),
+          }
         : profile
     ) || []
-    setFormData({ ...formData, riskProfiles })
+    setFormData({ ...formData, risk_profiles: riskProfiles })
   }
 
-  const getRiskProfile = (profileType: string) => {
-    return formData.riskProfiles?.find((p) => p.profile_type === profileType)
+  const getRiskProfile = (profileType: string): PortfolioRiskProfile | undefined => {
+    return formData.risk_profiles?.find((p) => p.profile_type === profileType)
+  }
+
+  const calculateTotalShare = (instruments: PortfolioInstrument[]): number => {
+    return instruments.reduce((sum, inst) => sum + inst.share_percent, 0)
   }
 
   if (loading) {
@@ -338,7 +317,7 @@ export default function Portfolios() {
       </Card>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingPortfolio ? 'Редактировать портфель' : 'Создать портфель'}
@@ -420,6 +399,60 @@ export default function Portfolios() {
                 />
               </div>
             </div>
+            <div className="grid grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="age_from">Возраст от</Label>
+                <Input
+                  id="age_from"
+                  type="number"
+                  value={formData.age_from || ''}
+                  onChange={(e) =>
+                    setFormData({ ...formData, age_from: e.target.value ? parseInt(e.target.value) : undefined })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="age_to">Возраст до</Label>
+                <Input
+                  id="age_to"
+                  type="number"
+                  value={formData.age_to || ''}
+                  onChange={(e) =>
+                    setFormData({ ...formData, age_to: e.target.value ? parseInt(e.target.value) : undefined })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="investor_type">Тип инвестора</Label>
+                <Select
+                  value={formData.investor_type || ''}
+                  onValueChange={(value) => setFormData({ ...formData, investor_type: value || undefined })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите тип" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="QUALIFIED">QUALIFIED</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="gender">Пол</Label>
+                <Select
+                  value={formData.gender || ''}
+                  onValueChange={(value) => setFormData({ ...formData, gender: value || undefined })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите пол" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Male">Мужской</SelectItem>
+                    <SelectItem value="Female">Женский</SelectItem>
+                    <SelectItem value="Any">Любой</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
             <div className="space-y-4">
               <Label>Риск-профили</Label>
@@ -433,113 +466,184 @@ export default function Portfolios() {
                   const profile = getRiskProfile(profileType)
                   return (
                     <TabsContent key={profileType} value={profileType} className="space-y-4">
-                      <div className="space-y-2">
-                        <Label>Потенциальная доходность (%)</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={profile?.potential_yield_percent || 0}
-                          onChange={(e) =>
-                            updateRiskProfile(
-                              profileType,
-                              'potential_yield_percent',
-                              parseFloat(e.target.value) || 0
-                            )
-                          }
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label>Инструменты</Label>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => addInstrument(profileType)}
-                          >
-                            <Plus className="mr-2 h-4 w-4" />
-                            Добавить
-                          </Button>
-                        </div>
-                        {profile?.instruments && profile.instruments.length > 0 && (
-                          <div className="space-y-2">
-                            <div className="grid grid-cols-5 gap-2 text-sm font-medium">
-                              <div>Продукт</div>
-                              <div>Тип корзины</div>
-                              <div>Доля (%)</div>
-                              <div>Порядок</div>
-                              <div></div>
-                            </div>
-                            {profile.instruments.map((instrument, index) => (
-                              <div key={index} className="grid grid-cols-5 gap-2">
-                                <Select
-                                  value={instrument.product_id.toString()}
-                                  onValueChange={(value) =>
-                                    updateInstrument(profileType, index, 'product_id', parseInt(value))
-                                  }
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {products.map((product) => (
-                                      <SelectItem key={product.id} value={product.id.toString()}>
-                                        {product.name}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <Select
-                                  value={instrument.bucket_type}
-                                  onValueChange={(value) =>
-                                    updateInstrument(profileType, index, 'bucket_type', value)
-                                  }
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="INITIAL_CAPITAL">Начальный капитал</SelectItem>
-                                    <SelectItem value="TOP_UP">Пополнение</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  value={instrument.share_percent}
-                                  onChange={(e) =>
-                                    updateInstrument(
-                                      profileType,
-                                      index,
-                                      'share_percent',
-                                      parseFloat(e.target.value) || 0
-                                    )
-                                  }
-                                />
-                                <Input
-                                  type="number"
-                                  value={instrument.order_index}
-                                  onChange={(e) =>
-                                    updateInstrument(
-                                      profileType,
-                                      index,
-                                      'order_index',
-                                      parseInt(e.target.value) || 0
-                                    )
-                                  }
-                                />
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => removeInstrument(profileType, index)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            ))}
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label>Стартовый капитал (Initial Capital)</Label>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => addInstrument(profileType, 'initial_capital')}
+                            >
+                              <Plus className="mr-2 h-4 w-4" />
+                              Добавить
+                            </Button>
                           </div>
-                        )}
+                          {profile?.initial_capital && profile.initial_capital.length > 0 && (
+                            <div className="space-y-2">
+                              <div className="grid grid-cols-4 gap-2 text-sm font-medium">
+                                <div>Продукт</div>
+                                <div>Доля (%)</div>
+                                <div>Порядок</div>
+                                <div></div>
+                              </div>
+                              {profile.initial_capital.map((instrument, index) => (
+                                <div key={index} className="grid grid-cols-4 gap-2">
+                                  <Select
+                                    value={instrument.product_id.toString()}
+                                    onValueChange={(value) =>
+                                      updateInstrument(profileType, 'initial_capital', index, 'product_id', parseInt(value))
+                                    }
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {products.map((product) => (
+                                        <SelectItem key={product.id} value={product.id.toString()}>
+                                          {product.name}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    value={instrument.share_percent}
+                                    onChange={(e) =>
+                                      updateInstrument(
+                                        profileType,
+                                        'initial_capital',
+                                        index,
+                                        'share_percent',
+                                        parseFloat(e.target.value) || 0
+                                      )
+                                    }
+                                  />
+                                  <Input
+                                    type="number"
+                                    value={instrument.order_index}
+                                    onChange={(e) =>
+                                      updateInstrument(
+                                        profileType,
+                                        'initial_capital',
+                                        index,
+                                        'order_index',
+                                        parseInt(e.target.value) || 0
+                                      )
+                                    }
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => removeInstrument(profileType, 'initial_capital', index)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ))}
+                              <div className="text-sm text-muted-foreground">
+                                Итого: {calculateTotalShare(profile.initial_capital).toFixed(2)}%
+                                {calculateTotalShare(profile.initial_capital) !== 100 && (
+                                  <span className="text-destructive ml-2">
+                                    (должно быть 100%)
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label>Пополнения (Initial Replenishment)</Label>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => addInstrument(profileType, 'initial_replenishment')}
+                            >
+                              <Plus className="mr-2 h-4 w-4" />
+                              Добавить
+                            </Button>
+                          </div>
+                          {profile?.initial_replenishment && profile.initial_replenishment.length > 0 && (
+                            <div className="space-y-2">
+                              <div className="grid grid-cols-4 gap-2 text-sm font-medium">
+                                <div>Продукт</div>
+                                <div>Доля (%)</div>
+                                <div>Порядок</div>
+                                <div></div>
+                              </div>
+                              {profile.initial_replenishment.map((instrument, index) => (
+                                <div key={index} className="grid grid-cols-4 gap-2">
+                                  <Select
+                                    value={instrument.product_id.toString()}
+                                    onValueChange={(value) =>
+                                      updateInstrument(profileType, 'initial_replenishment', index, 'product_id', parseInt(value))
+                                    }
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {products.map((product) => (
+                                        <SelectItem key={product.id} value={product.id.toString()}>
+                                          {product.name}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    value={instrument.share_percent}
+                                    onChange={(e) =>
+                                      updateInstrument(
+                                        profileType,
+                                        'initial_replenishment',
+                                        index,
+                                        'share_percent',
+                                        parseFloat(e.target.value) || 0
+                                      )
+                                    }
+                                  />
+                                  <Input
+                                    type="number"
+                                    value={instrument.order_index}
+                                    onChange={(e) =>
+                                      updateInstrument(
+                                        profileType,
+                                        'initial_replenishment',
+                                        index,
+                                        'order_index',
+                                        parseInt(e.target.value) || 0
+                                      )
+                                    }
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => removeInstrument(profileType, 'initial_replenishment', index)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ))}
+                              <div className="text-sm text-muted-foreground">
+                                Итого: {calculateTotalShare(profile.initial_replenishment).toFixed(2)}%
+                                {calculateTotalShare(profile.initial_replenishment) !== 100 && profile.initial_replenishment.length > 0 && (
+                                  <span className="text-destructive ml-2">
+                                    (должно быть 100%)
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </TabsContent>
                   )
@@ -558,4 +662,3 @@ export default function Portfolios() {
     </div>
   )
 }
-
