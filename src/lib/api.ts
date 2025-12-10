@@ -60,12 +60,17 @@ export interface Product {
   name: string
   product_type: string
   currency: string
-  min_term_months: number
-  max_term_months: number
-  min_amount: number
-  max_amount: number
+  min_term_months?: number
+  max_term_months?: number
+  min_amount?: number
+  max_amount?: number
   yields?: ProductYield[]
+  lines?: ProductLine[]
   is_default?: boolean
+  is_active?: number
+  agent_id?: number | null
+  created_at?: string
+  updated_at?: string
 }
 
 export interface ProductYield {
@@ -73,6 +78,14 @@ export interface ProductYield {
   term_to_months: number
   amount_from: number
   amount_to: number
+  yield_percent: number
+}
+
+export interface ProductLine {
+  min_term_months: number
+  max_term_months: number
+  min_amount: number
+  max_amount: number
   yield_percent: number
 }
 

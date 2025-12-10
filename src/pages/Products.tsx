@@ -77,15 +77,22 @@ export default function Products() {
 
   const handleEdit = (product: Product) => {
     setEditingProduct(product)
+    const line = product.lines?.[0]
     setFormData({
       name: product.name,
       product_type: product.product_type,
       currency: product.currency,
-      min_term_months: product.min_term_months,
-      max_term_months: product.max_term_months,
-      min_amount: product.min_amount,
-      max_amount: product.max_amount,
-      yields: product.yields || [],
+      min_term_months: product.min_term_months ?? line?.min_term_months ?? 0,
+      max_term_months: product.max_term_months ?? line?.max_term_months ?? 0,
+      min_amount: product.min_amount ?? line?.min_amount ?? 0,
+      max_amount: product.max_amount ?? line?.max_amount ?? 0,
+      yields: product.yields || product.lines?.map(line => ({
+        term_from_months: line.min_term_months,
+        term_to_months: line.max_term_months,
+        amount_from: line.min_amount,
+        amount_to: line.max_amount,
+        yield_percent: line.yield_percent,
+      })) || [],
     })
     setIsDialogOpen(true)
   }
@@ -194,10 +201,20 @@ export default function Products() {
                   <TableCell>{product.product_type}</TableCell>
                   <TableCell>{product.currency}</TableCell>
                   <TableCell>
-                    {product.min_term_months} - {product.max_term_months}
+                    {(() => {
+                      const line = product.lines?.[0]
+                      const minTerm = product.min_term_months ?? line?.min_term_months ?? 0
+                      const maxTerm = product.max_term_months ?? line?.max_term_months ?? 0
+                      return `${minTerm} - ${maxTerm}`
+                    })()}
                   </TableCell>
                   <TableCell>
-                    {(product.min_amount ?? 0).toLocaleString()} - {(product.max_amount ?? 0).toLocaleString()}
+                    {(() => {
+                      const line = product.lines?.[0]
+                      const minAmount = product.min_amount ?? line?.min_amount ?? 0
+                      const maxAmount = product.max_amount ?? line?.max_amount ?? 0
+                      return `${minAmount.toLocaleString()} - ${maxAmount.toLocaleString()}`
+                    })()}
                   </TableCell>
                   <TableCell>
                     {product.is_default ? (
