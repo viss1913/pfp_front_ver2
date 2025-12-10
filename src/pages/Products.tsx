@@ -118,15 +118,30 @@ export default function Products() {
 
   const handleSubmit = async () => {
     try {
+      // Преобразуем yields в lines для отправки на бэкенд
+      const payload = {
+        name: formData.name,
+        product_type: formData.product_type,
+        currency: formData.currency,
+        lines: (formData.yields || []).map(yieldItem => ({
+          min_term_months: yieldItem.term_from_months,
+          max_term_months: yieldItem.term_to_months,
+          min_amount: yieldItem.amount_from,
+          max_amount: yieldItem.amount_to,
+          yield_percent: yieldItem.yield_percent,
+        })),
+      }
+
       if (editingProduct) {
-        await productsAPI.update(editingProduct.id, formData)
+        await productsAPI.update(editingProduct.id, payload)
       } else {
-        await productsAPI.create(formData)
+        await productsAPI.create(payload)
       }
       setIsDialogOpen(false)
       loadProducts()
     } catch (error: any) {
       console.error('Failed to save product:', error)
+      console.error('Error details:', error.response?.data)
       alert(error.response?.data?.error || error.response?.data?.message || 'Ошибка сохранения')
     }
   }
