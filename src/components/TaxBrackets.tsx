@@ -74,7 +74,11 @@ export default function TaxBrackets({ isAdmin }: TaxBracketsProps) {
       setError('')
     } catch (error: any) {
       console.error('Failed to load tax brackets:', error)
-      setError('Не удалось загрузить налоговые ставки')
+      if (error.response?.status === 404) {
+        setError('API endpoint не найден. Возможно, бэкенд еще не развернут с поддержкой налоговых ставок.')
+      } else {
+        setError('Не удалось загрузить налоговые ставки')
+      }
     } finally {
       setLoading(false)
     }
@@ -137,6 +141,8 @@ export default function TaxBrackets({ isAdmin }: TaxBracketsProps) {
         setError(`Ошибка валидации: ${errorMessage}. Возможно, диапазон пересекается с существующей ставкой.`)
       } else if (error.response?.status === 403) {
         setError('Только администратор может управлять налоговыми ставками')
+      } else if (error.response?.status === 404) {
+        setError('API endpoint не найден (404). Возможно, бэкенд еще не развернут с поддержкой налоговых ставок.')
       } else {
         setError(errorMessage)
       }
@@ -263,6 +269,8 @@ export default function TaxBrackets({ isAdmin }: TaxBracketsProps) {
         setError(`Ошибка валидации: ${errorMessage}. Возможно, диапазоны пересекаются.`)
       } else if (error.response?.status === 403) {
         setError('Только администратор может управлять налоговыми ставками')
+      } else if (error.response?.status === 404) {
+        setError('API endpoint не найден (404). Возможно, бэкенд еще не развернут с поддержкой налоговых ставок.')
       } else {
         setError(errorMessage)
       }
