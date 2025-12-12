@@ -166,6 +166,11 @@ export interface Tax2ndflBracketUpdate {
   description?: string
 }
 
+export interface ApiError {
+  error: string
+  message: string
+}
+
 // API методы
 export const authAPI = {
   login: async (data: LoginRequest): Promise<LoginResponse> => {
@@ -281,7 +286,7 @@ export const taxBracketsAPI = {
     await api.delete(`/pfp/settings/tax-2ndfl/brackets/${id}`)
   },
   bulkCreate: async (brackets: Tax2ndflBracketCreate[]): Promise<Tax2ndflBracket[]> => {
-    const response = await api.post<Tax2ndflBracket[]>('/pfp/settings/tax-2ndfl/brackets/bulk', { brackets })
+    const response = await api.post<Tax2ndflBracket[]>('/pfp/settings/tax-2ndfl/brackets/bulk', brackets)
     return response.data
   },
 }
