@@ -207,7 +207,7 @@ export default function PdsCofinancing({ isAdmin }: PdsCofinancingProps) {
 
     setError('')
     
-    const incomeTo = isUnlimited ? null : bracketForm.income_to
+    const incomeTo: number | null = isUnlimited ? null : (bracketForm.income_to ?? null)
     
     // Валидация
     if (bracketForm.income_from < 0) {
@@ -258,7 +258,7 @@ export default function PdsCofinancing({ isAdmin }: PdsCofinancingProps) {
 
     setError('')
     
-    const incomeTo = isUnlimited ? null : bracketForm.income_to
+    const incomeTo: number | null = isUnlimited ? null : (bracketForm.income_to ?? null)
     
     // Валидация
     const incomeFrom = bracketForm.income_from ?? editingBracket.income_from
