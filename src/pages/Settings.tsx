@@ -24,6 +24,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Edit } from 'lucide-react'
 import TaxBrackets from '@/components/TaxBrackets'
+import PdsCofinancing from '@/components/PdsCofinancing'
 
 export default function Settings() {
   const { user } = useAuth()
@@ -109,6 +110,7 @@ export default function Settings() {
         <TabsList>
           <TabsTrigger value="system">Системные настройки</TabsTrigger>
           <TabsTrigger value="tax">Налоги 2НДФЛ</TabsTrigger>
+          <TabsTrigger value="pds">ПДС</TabsTrigger>
         </TabsList>
 
         <TabsContent value="system" className="space-y-4">
@@ -156,6 +158,10 @@ export default function Settings() {
 
         <TabsContent value="tax" className="space-y-4">
           <TaxBrackets isAdmin={isAdmin} />
+        </TabsContent>
+
+        <TabsContent value="pds" className="space-y-4">
+          <PdsCofinancing isAdmin={isAdmin} />
         </TabsContent>
       </Tabs>
 

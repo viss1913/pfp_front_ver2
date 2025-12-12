@@ -169,6 +169,46 @@ export interface ApiError {
   message: string
 }
 
+// Типы для софинансирования ПДС
+export interface PdsCofinSettings {
+  id: number
+  max_state_cofin_amount_per_year: number
+  min_contribution_for_support_per_year: number
+  income_basis: 'gross_before_ndfl' | 'net_after_ndfl'
+  created_at: string
+  updated_at: string
+}
+
+export interface PdsCofinSettingsUpdate {
+  max_state_cofin_amount_per_year?: number
+  min_contribution_for_support_per_year?: number
+  income_basis?: 'gross_before_ndfl' | 'net_after_ndfl'
+}
+
+export interface PdsCofinIncomeBracket {
+  id: number
+  income_from: number
+  income_to: number | null
+  ratio_numerator: number
+  ratio_denominator: number
+  created_at: string
+  updated_at: string
+}
+
+export interface PdsCofinIncomeBracketCreate {
+  income_from: number
+  income_to?: number | null
+  ratio_numerator: number
+  ratio_denominator: number
+}
+
+export interface PdsCofinIncomeBracketUpdate {
+  income_from?: number
+  income_to?: number | null
+  ratio_numerator?: number
+  ratio_denominator?: number
+}
+
 // API методы
 export const authAPI = {
   login: async (data: LoginRequest): Promise<LoginResponse> => {
@@ -286,6 +326,36 @@ export const taxBracketsAPI = {
   bulkCreate: async (brackets: Tax2ndflBracketCreate[]): Promise<Tax2ndflBracket[]> => {
     const response = await api.post<Tax2ndflBracket[]>('/pfp/settings/tax-2ndfl/brackets/bulk', brackets)
     return response.data
+  },
+}
+
+export const pdsCofinAPI = {
+  getSettings: async (): Promise<PdsCofinSettings> => {
+    const response = await api.get<PdsCofinSettings>('/pfp/settings/pds/cofin-settings')
+    return response.data
+  },
+  updateSettings: async (data: PdsCofinSettingsUpdate): Promise<PdsCofinSettings> => {
+    const response = await api.patch<PdsCofinSettings>('/pfp/settings/pds/cofin-settings', data)
+    return response.data
+  },
+  listBrackets: async (): Promise<PdsCofinIncomeBracket[]> => {
+    const response = await api.get<PdsCofinIncomeBracket[]>('/pfp/settings/pds/cofin-income-brackets')
+    return response.data
+  },
+  getBracket: async (id: number): Promise<PdsCofinIncomeBracket> => {
+    const response = await api.get<PdsCofinIncomeBracket>(`/pfp/settings/pds/cofin-income-brackets/${id}`)
+    return response.data
+  },
+  createBracket: async (data: PdsCofinIncomeBracketCreate): Promise<PdsCofinIncomeBracket> => {
+    const response = await api.post<PdsCofinIncomeBracket>('/pfp/settings/pds/cofin-income-brackets', data)
+    return response.data
+  },
+  updateBracket: async (id: number, data: PdsCofinIncomeBracketUpdate): Promise<PdsCofinIncomeBracket> => {
+    const response = await api.patch<PdsCofinIncomeBracket>(`/pfp/settings/pds/cofin-income-brackets/${id}`, data)
+    return response.data
+  },
+  deleteBracket: async (id: number): Promise<void> => {
+    await api.delete(`/pfp/settings/pds/cofin-income-brackets/${id}`)
   },
 }
 

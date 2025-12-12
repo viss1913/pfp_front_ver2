@@ -29,6 +29,18 @@ export function formatRate(value: number | string | null | undefined): string {
   return `${numValue.toFixed(1)}%`
 }
 
+/**
+ * Форматирует коэффициент софинансирования (ratio_numerator / ratio_denominator)
+ * @param numerator - числитель соотношения
+ * @param denominator - знаменатель соотношения
+ * @returns отформатированная строка (например: "1.0")
+ */
+export function formatCoefficient(numerator: number, denominator: number): string {
+  if (denominator === 0) return '0.0'
+  const coefficient = numerator / denominator
+  return coefficient.toFixed(2)
+}
+
 
 
 
