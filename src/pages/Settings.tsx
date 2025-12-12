@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { settingsAPI, SystemSetting } from '@/lib/api'
+import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -20,14 +21,19 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Edit } from 'lucide-react'
+import TaxBrackets from '@/components/TaxBrackets'
 
 export default function Settings() {
+  const { user } = useAuth()
   const [settings, setSettings] = useState<SystemSetting[]>([])
   const [loading, setLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingSetting, setEditingSetting] = useState<SystemSetting | null>(null)
   const [editValue, setEditValue] = useState<string>('')
+  
+  const isAdmin = user?.role === 'admin' || user?.role === 'ADMIN'
 
   useEffect(() => {
     loadSettings()
@@ -99,46 +105,59 @@ export default function Settings() {
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Список настроек</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Ключ</TableHead>
-                <TableHead>Значение</TableHead>
-                <TableHead>Описание</TableHead>
-                <TableHead>Категория</TableHead>
-                <TableHead className="text-right">Действия</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {settings.map((setting) => (
-                <TableRow key={setting.key}>
-                  <TableCell className="font-medium">{setting.key}</TableCell>
-                  <TableCell className="max-w-md truncate">
-                    {formatValue(setting.value)}
-                  </TableCell>
-                  <TableCell>{setting.description || '-'}</TableCell>
-                  <TableCell>{setting.category || '-'}</TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleEdit(setting)}
-                      title="Редактировать"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="system" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="system">Системные настройки</TabsTrigger>
+          <TabsTrigger value="tax">Налоги 2НДФЛ</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="system" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Список настроек</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Ключ</TableHead>
+                    <TableHead>Значение</TableHead>
+                    <TableHead>Описание</TableHead>
+                    <TableHead>Категория</TableHead>
+                    <TableHead className="text-right">Действия</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {settings.map((setting) => (
+                    <TableRow key={setting.key}>
+                      <TableCell className="font-medium">{setting.key}</TableCell>
+                      <TableCell className="max-w-md truncate">
+                        {formatValue(setting.value)}
+                      </TableCell>
+                      <TableCell>{setting.description || '-'}</TableCell>
+                      <TableCell>{setting.category || '-'}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEdit(setting)}
+                          title="Редактировать"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="tax" className="space-y-4">
+          <TaxBrackets isAdmin={isAdmin} />
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-2xl">
@@ -187,6 +206,8 @@ export default function Settings() {
     </div>
   )
 }
+
+
 
 
 

@@ -139,6 +139,33 @@ export interface SystemSetting {
   updated_at?: string
 }
 
+export interface Tax2ndflBracket {
+  id: number
+  income_from: number
+  income_to: number
+  rate: number
+  order_index: number
+  description?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface Tax2ndflBracketCreate {
+  income_from: number
+  income_to: number
+  rate: number
+  order_index?: number
+  description?: string
+}
+
+export interface Tax2ndflBracketUpdate {
+  income_from?: number
+  income_to?: number
+  rate?: number
+  order_index?: number
+  description?: string
+}
+
 // API методы
 export const authAPI = {
   login: async (data: LoginRequest): Promise<LoginResponse> => {
@@ -226,6 +253,36 @@ export const settingsAPI = {
   },
   delete: async (key: string): Promise<void> => {
     await api.delete(`/pfp/settings/${key}`)
+  },
+}
+
+export const taxBracketsAPI = {
+  list: async (): Promise<Tax2ndflBracket[]> => {
+    const response = await api.get<Tax2ndflBracket[]>('/pfp/settings/tax-2ndfl/brackets')
+    return response.data
+  },
+  get: async (id: number): Promise<Tax2ndflBracket> => {
+    const response = await api.get<Tax2ndflBracket>(`/pfp/settings/tax-2ndfl/brackets/${id}`)
+    return response.data
+  },
+  getByIncome: async (income: number): Promise<Tax2ndflBracket> => {
+    const response = await api.get<Tax2ndflBracket>(`/pfp/settings/tax-2ndfl/brackets/by-income/${income}`)
+    return response.data
+  },
+  create: async (data: Tax2ndflBracketCreate): Promise<Tax2ndflBracket> => {
+    const response = await api.post<Tax2ndflBracket>('/pfp/settings/tax-2ndfl/brackets', data)
+    return response.data
+  },
+  update: async (id: number, data: Tax2ndflBracketUpdate): Promise<Tax2ndflBracket> => {
+    const response = await api.put<Tax2ndflBracket>(`/pfp/settings/tax-2ndfl/brackets/${id}`, data)
+    return response.data
+  },
+  delete: async (id: number): Promise<void> => {
+    await api.delete(`/pfp/settings/tax-2ndfl/brackets/${id}`)
+  },
+  bulkCreate: async (brackets: Tax2ndflBracketCreate[]): Promise<Tax2ndflBracket[]> => {
+    const response = await api.post<Tax2ndflBracket[]>('/pfp/settings/tax-2ndfl/brackets/bulk', { brackets })
+    return response.data
   },
 }
 
