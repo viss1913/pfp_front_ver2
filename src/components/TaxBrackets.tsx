@@ -47,12 +47,11 @@ export default function TaxBrackets({ isAdmin }: TaxBracketsProps) {
     income_to: 0,
     rate: 0,
     order_index: 0,
-    description: '',
   })
 
   // Форма массового создания
   const [bulkBrackets, setBulkBrackets] = useState<Tax2ndflBracketCreate[]>([
-    { income_from: 0, income_to: 0, rate: 0, order_index: 0, description: '' },
+    { income_from: 0, income_to: 0, rate: 0, order_index: 0 },
   ])
 
   useEffect(() => {
@@ -98,7 +97,6 @@ export default function TaxBrackets({ isAdmin }: TaxBracketsProps) {
       income_to: 0,
       rate: 0,
       order_index: brackets.length > 0 ? Math.max(...brackets.map(b => b.order_index)) + 1 : 0,
-      description: '',
     })
     setError('')
     setIsCreateDialogOpen(true)
@@ -111,7 +109,6 @@ export default function TaxBrackets({ isAdmin }: TaxBracketsProps) {
       income_to: bracket.income_to,
       rate: bracket.rate,
       order_index: bracket.order_index,
-      description: bracket.description || '',
     })
     setError('')
     setIsEditDialogOpen(true)
@@ -186,7 +183,6 @@ export default function TaxBrackets({ isAdmin }: TaxBracketsProps) {
       if (formData.income_to !== editingBracket.income_to) updateData.income_to = formData.income_to
       if (formData.rate !== editingBracket.rate) updateData.rate = formData.rate
       if (formData.order_index !== editingBracket.order_index) updateData.order_index = formData.order_index
-      if (formData.description !== (editingBracket.description || '')) updateData.description = formData.description
 
       await taxBracketsAPI.update(editingBracket.id, updateData)
       setIsEditDialogOpen(false)
@@ -225,7 +221,7 @@ export default function TaxBrackets({ isAdmin }: TaxBracketsProps) {
   }
 
   const handleBulkCreate = () => {
-    setBulkBrackets([{ income_from: 0, income_to: 0, rate: 0, order_index: 0, description: '' }])
+    setBulkBrackets([{ income_from: 0, income_to: 0, rate: 0, order_index: 0 }])
     setError('')
     setIsBulkDialogOpen(true)
   }
@@ -233,7 +229,7 @@ export default function TaxBrackets({ isAdmin }: TaxBracketsProps) {
   const handleAddBulkRow = () => {
     setBulkBrackets([
       ...bulkBrackets,
-      { income_from: 0, income_to: 0, rate: 0, order_index: bulkBrackets.length, description: '' },
+      { income_from: 0, income_to: 0, rate: 0, order_index: bulkBrackets.length },
     ])
   }
 
@@ -485,15 +481,6 @@ export default function TaxBrackets({ isAdmin }: TaxBracketsProps) {
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Описание</Label>
-              <Input
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Описание диапазона"
-              />
-            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
@@ -572,15 +559,6 @@ export default function TaxBrackets({ isAdmin }: TaxBracketsProps) {
                   }
                 />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit_description">Описание</Label>
-              <Input
-                id="edit_description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Описание диапазона"
-              />
             </div>
           </div>
           <DialogFooter>
@@ -699,14 +677,6 @@ export default function TaxBrackets({ isAdmin }: TaxBracketsProps) {
                         onChange={(e) =>
                           handleUpdateBulkRow(index, 'order_index', parseInt(e.target.value) || index)
                         }
-                      />
-                    </div>
-                    <div className="space-y-2 col-span-2">
-                      <Label>Описание</Label>
-                      <Input
-                        value={bracket.description || ''}
-                        onChange={(e) => handleUpdateBulkRow(index, 'description', e.target.value)}
-                        placeholder="Описание диапазона"
                       />
                     </div>
                   </div>

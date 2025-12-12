@@ -151,11 +151,6 @@ components:
           type: integer
           description: Порядок сортировки
           example: 1
-        description:
-          type: string
-          nullable: true
-          description: Описание диапазона
-          example: "Стандартная ставка 13%"
         created_at:
           type: string
           format: date-time
@@ -191,9 +186,6 @@ components:
           type: integer
           minimum: 0
           description: Порядок сортировки
-        description:
-          type: string
-          description: Описание диапазона
     Tax2ndflBracketUpdate:
       type: object
       properties:
@@ -217,9 +209,6 @@ components:
           type: integer
           minimum: 0
           description: Порядок сортировки
-        description:
-          type: string
-          description: Описание диапазона
     Tax2ndflBracketsBulkCreate:
       type: object
       required:
@@ -650,6 +639,9 @@ paths:
       summary: Создать новую налоговую ставку (admin only)
       tags:
         - Settings
+      description: |
+        **Важно для фронтенда:** Поле `description` было удалено из API. 
+        Необходимо убрать поле "Описание" из формы создания налоговой ставки в админке.
       requestBody:
         required: true
         content:
@@ -741,6 +733,9 @@ paths:
       summary: Обновить налоговую ставку (admin only)
       tags:
         - Settings
+      description: |
+        **Важно для фронтенда:** Поле `description` было удалено из API. 
+        Необходимо убрать поле "Описание" из формы редактирования налоговой ставки в админке.
       parameters:
         - in: path
           name: id

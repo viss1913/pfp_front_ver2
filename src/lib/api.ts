@@ -155,7 +155,6 @@ export interface Tax2ndflBracketCreate {
   income_to: number
   rate: number
   order_index?: number
-  description?: string
 }
 
 export interface Tax2ndflBracketUpdate {
@@ -163,7 +162,6 @@ export interface Tax2ndflBracketUpdate {
   income_to?: number
   rate?: number
   order_index?: number
-  description?: string
 }
 
 export interface ApiError {
