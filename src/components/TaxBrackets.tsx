@@ -63,8 +63,16 @@ export default function TaxBrackets({ isAdmin }: TaxBracketsProps) {
     try {
       setLoading(true)
       const data = await taxBracketsAPI.list()
+      // Преобразуем строковые значения в числа, если они пришли как строки
+      const normalized = data.map(bracket => ({
+        ...bracket,
+        income_from: typeof bracket.income_from === 'string' ? parseFloat(bracket.income_from) : bracket.income_from,
+        income_to: typeof bracket.income_to === 'string' ? parseFloat(bracket.income_to) : bracket.income_to,
+        rate: typeof bracket.rate === 'string' ? parseFloat(bracket.rate) : bracket.rate,
+        order_index: typeof bracket.order_index === 'string' ? parseInt(bracket.order_index, 10) : bracket.order_index,
+      }))
       // Сортируем по order_index, затем по income_from
-      const sorted = [...data].sort((a, b) => {
+      const sorted = [...normalized].sort((a, b) => {
         if (a.order_index !== b.order_index) {
           return a.order_index - b.order_index
         }
@@ -289,7 +297,15 @@ export default function TaxBrackets({ isAdmin }: TaxBracketsProps) {
 
     try {
       const result = await taxBracketsAPI.getByIncome(income)
-      setSearchResult(result)
+      // Преобразуем строковые значения в числа, если они пришли как строки
+      const normalized = {
+        ...result,
+        income_from: typeof result.income_from === 'string' ? parseFloat(result.income_from) : result.income_from,
+        income_to: typeof result.income_to === 'string' ? parseFloat(result.income_to) : result.income_to,
+        rate: typeof result.rate === 'string' ? parseFloat(result.rate) : result.rate,
+        order_index: typeof result.order_index === 'string' ? parseInt(result.order_index, 10) : result.order_index,
+      }
+      setSearchResult(normalized)
     } catch (error: any) {
       if (error.response?.status === 404) {
         setSearchResult(null)
