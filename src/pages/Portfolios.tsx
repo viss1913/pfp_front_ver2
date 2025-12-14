@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { portfoliosAPI, productsAPI, Portfolio, Product, PortfolioInstrument, PortfolioRiskProfile, PortfolioClass } from '@/lib/api'
+import { portfoliosAPI, productsAPI, Portfolio, Product, PortfolioInstrument, PortfolioInstrumentWithBucket, PortfolioRiskProfile, PortfolioClass } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -52,18 +52,15 @@ export default function Portfolios() {
     risk_profiles: [
       {
         profile_type: 'CONSERVATIVE',
-        initial_capital: [],
-        initial_replenishment: [],
+        instruments: [],
       },
       {
         profile_type: 'BALANCED',
-        initial_capital: [],
-        initial_replenishment: [],
+        instruments: [],
       },
       {
         profile_type: 'AGGRESSIVE',
-        initial_capital: [],
-        initial_replenishment: [],
+        instruments: [],
       },
     ],
   })
@@ -89,6 +86,43 @@ export default function Portfolios() {
     }
   }
 
+  const BUCKET_MAP = {
+    initial_capital: 'INITIAL_CAPITAL',
+    initial_replenishment: 'TOP_UP',
+  } as const
+
+  const normalizeRiskProfiles = (profiles: any[] | undefined) => {
+    if (!profiles) return undefined
+    return profiles.map((p) => {
+      if (p?.instruments && Array.isArray(p.instruments)) return p
+      const instruments: PortfolioInstrumentWithBucket[] = []
+      if (Array.isArray(p?.initial_capital)) {
+        instruments.push(
+          ...p.initial_capital.map((inst: any, i: number) => ({
+            product_id: inst.product_id,
+            share_percent: inst.share_percent,
+            order_index: inst.order_index ?? i,
+            bucket_type: 'INITIAL_CAPITAL',
+          }))
+        )
+      }
+      if (Array.isArray(p?.initial_replenishment)) {
+        instruments.push(
+          ...p.initial_replenishment.map((inst: any, i: number) => ({
+            product_id: inst.product_id,
+            share_percent: inst.share_percent,
+            order_index: inst.order_index ?? i,
+            bucket_type: 'TOP_UP',
+          }))
+        )
+      }
+      return {
+        profile_type: p.profile_type,
+        instruments,
+      }
+    })
+  }
+
   const handleCreate = () => {
     setEditingPortfolio(null)
     setFormData({
@@ -106,18 +140,15 @@ export default function Portfolios() {
       risk_profiles: [
         {
           profile_type: 'CONSERVATIVE',
-          initial_capital: [],
-          initial_replenishment: [],
+          instruments: [],
         },
         {
           profile_type: 'BALANCED',
-          initial_capital: [],
-          initial_replenishment: [],
+          instruments: [],
         },
         {
           profile_type: 'AGGRESSIVE',
-          initial_capital: [],
-          initial_replenishment: [],
+          instruments: [],
         },
       ],
     })
@@ -138,21 +169,18 @@ export default function Portfolios() {
       investor_type: portfolio.investor_type,
       gender: portfolio.gender,
       classes: portfolio.classes || [],
-      risk_profiles: portfolio.risk_profiles || [
+      risk_profiles: normalizeRiskProfiles(portfolio.risk_profiles) || [
         {
           profile_type: 'CONSERVATIVE',
-          initial_capital: [],
-          initial_replenishment: [],
+          instruments: [],
         },
         {
           profile_type: 'BALANCED',
-          initial_capital: [],
-          initial_replenishment: [],
+          instruments: [],
         },
         {
           profile_type: 'AGGRESSIVE',
-          initial_capital: [],
-          initial_replenishment: [],
+          instruments: [],
         },
       ],
     })
@@ -173,10 +201,33 @@ export default function Portfolios() {
     try {
       if (editingPortfolio) {
         const payload: any = { ...formData }
-        if (formData.risk_profiles !== undefined) {
-          payload.riskProfiles = formData.risk_profiles
-          delete payload.risk_profiles
-        }
+          if (formData.risk_profiles !== undefined) {
+            payload.riskProfiles = formData.risk_profiles.map((p: any) => {
+              if (p?.instruments && Array.isArray(p.instruments)) return p
+              const instruments: any[] = []
+              if (Array.isArray(p?.initial_capital)) {
+                instruments.push(...p.initial_capital.map((inst: any, i: number) => ({
+                  product_id: inst.product_id,
+                  share_percent: inst.share_percent,
+                  order_index: inst.order_index ?? i,
+                  bucket_type: 'INITIAL_CAPITAL',
+                })))
+              }
+              if (Array.isArray(p?.initial_replenishment)) {
+                instruments.push(...p.initial_replenishment.map((inst: any, i: number) => ({
+                  product_id: inst.product_id,
+                  share_percent: inst.share_percent,
+                  order_index: inst.order_index ?? i,
+                  bucket_type: 'TOP_UP',
+                })))
+              }
+              return {
+                profile_type: p.profile_type,
+                instruments,
+              }
+            })
+            delete payload.risk_profiles
+          }
         await portfoliosAPI.update(editingPortfolio.id, payload as any)
       } else {
         const payload: any = { ...formData }
@@ -195,21 +246,24 @@ export default function Portfolios() {
   }
 
   const addInstrument = (profileType: string, bucketType: 'initial_capital' | 'initial_replenishment') => {
-    const riskProfiles = formData.risk_profiles?.map((profile) =>
-      profile.profile_type === profileType
-        ? {
-            ...profile,
-            [bucketType]: [
-              ...profile[bucketType],
-              {
-                product_id: products[0]?.id || 0,
-                share_percent: 0,
-                order_index: profile[bucketType].length,
-              },
-            ],
-          }
-        : profile
-    ) || []
+    const bucketName = BUCKET_MAP[bucketType]
+    const riskProfiles = formData.risk_profiles?.map((profile) => {
+      if (profile.profile_type !== profileType) return profile
+      const instruments = profile.instruments || []
+      const countInBucket = instruments.filter((i: any) => i.bucket_type === bucketName).length
+      return {
+        ...profile,
+        instruments: [
+          ...instruments,
+          {
+            product_id: products[0]?.id || 0,
+            share_percent: 0,
+            order_index: countInBucket,
+            bucket_type: bucketName,
+          },
+        ],
+      }
+    }) || []
     setFormData({ ...formData, risk_profiles: riskProfiles })
   }
 
@@ -217,19 +271,19 @@ export default function Portfolios() {
     profileType: string,
     bucketType: 'initial_capital' | 'initial_replenishment',
     index: number,
-    field: keyof PortfolioInstrument,
+    field: keyof PortfolioInstrument | keyof PortfolioInstrumentWithBucket,
     value: any
   ) => {
-    const riskProfiles = formData.risk_profiles?.map((profile) =>
-      profile.profile_type === profileType
-        ? {
-            ...profile,
-            [bucketType]: profile[bucketType].map((inst, i) =>
-              i === index ? { ...inst, [field]: value } : inst
-            ),
-          }
-        : profile
-    ) || []
+    const bucketName = BUCKET_MAP[bucketType]
+    const riskProfiles = formData.risk_profiles?.map((profile) => {
+      if (profile.profile_type !== profileType) return profile
+      const instruments = profile.instruments || []
+      const indices = instruments.map((_, i) => i).filter(i => instruments[i].bucket_type === bucketName)
+      const realIndex = indices[index]
+      if (realIndex === undefined) return profile
+      const newInstruments = instruments.map((inst, i) => i === realIndex ? { ...inst, [field]: value } : inst)
+      return { ...profile, instruments: newInstruments }
+    }) || []
     setFormData({ ...formData, risk_profiles: riskProfiles })
   }
 
@@ -238,14 +292,15 @@ export default function Portfolios() {
     bucketType: 'initial_capital' | 'initial_replenishment',
     index: number
   ) => {
-    const riskProfiles = formData.risk_profiles?.map((profile) =>
-      profile.profile_type === profileType
-        ? {
-            ...profile,
-            [bucketType]: profile[bucketType].filter((_, i) => i !== index),
-          }
-        : profile
-    ) || []
+    const bucketName = BUCKET_MAP[bucketType]
+    const riskProfiles = formData.risk_profiles?.map((profile) => {
+      if (profile.profile_type !== profileType) return profile
+      const instruments = profile.instruments || []
+      const indices = instruments.map((_, i) => i).filter(i => instruments[i].bucket_type === bucketName)
+      const realIndex = indices[index]
+      if (realIndex === undefined) return profile
+      return { ...profile, instruments: instruments.filter((_, i) => i !== realIndex) }
+    }) || []
     setFormData({ ...formData, risk_profiles: riskProfiles })
   }
 
@@ -253,8 +308,8 @@ export default function Portfolios() {
     return formData.risk_profiles?.find((p) => p.profile_type === profileType)
   }
 
-  const calculateTotalShare = (instruments: PortfolioInstrument[]): number => {
-    return instruments.reduce((sum, inst) => sum + inst.share_percent, 0)
+  const calculateTotalShare = (instruments: { share_percent: number }[]): number => {
+    return (instruments || []).reduce((sum, inst) => sum + (inst.share_percent || 0), 0)
   }
 
   if (loading) {
@@ -575,10 +630,11 @@ export default function Portfolios() {
                             Добавить
                           </Button>
                         </div>
-                        {profile?.initial_capital && profile.initial_capital.length > 0 ? (
-                          <div className="space-y-2">
-                            {profile.initial_capital.map((instrument, index) => {
-                              return (
+                        {(() => {
+                          const cap = profile?.instruments?.filter((i: any) => i.bucket_type === 'INITIAL_CAPITAL') || []
+                          return cap.length > 0 ? (
+                            <div className="space-y-2">
+                              {cap.map((instrument: any, index: number) => (
                                 <div key={index} className="flex items-center gap-2 p-2 border rounded-md">
                                   <div className="flex-1">
                                     <Select
@@ -626,20 +682,18 @@ export default function Portfolios() {
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
                                 </div>
-                              )
-                            })}
-                            <div className="text-sm text-muted-foreground">
-                              Итого: {calculateTotalShare(profile.initial_capital).toFixed(2)}%
-                              {calculateTotalShare(profile.initial_capital) !== 100 && (
-                                <span className="text-destructive ml-2">
-                                  (должно быть 100%)
-                                </span>
-                              )}
+                              ))}
+                              <div className="text-sm text-muted-foreground">
+                                Итого: {calculateTotalShare(cap).toFixed(2)}%
+                                {calculateTotalShare(cap) !== 100 && (
+                                  <span className="text-destructive ml-2">(должно быть 100%)</span>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">Нет инструментов</p>
-                        )}
+                          ) : (
+                            <p className="text-sm text-muted-foreground">Нет инструментов</p>
+                          )
+                        })()}
                       </div>
 
                       <div className="space-y-2">
@@ -655,10 +709,11 @@ export default function Portfolios() {
                             Добавить
                           </Button>
                         </div>
-                        {profile?.initial_replenishment && profile.initial_replenishment.length > 0 ? (
-                          <div className="space-y-2">
-                            {profile.initial_replenishment.map((instrument, index) => {
-                              return (
+                        {(() => {
+                          const topups = profile?.instruments?.filter((i: any) => i.bucket_type === 'TOP_UP') || []
+                          return topups.length > 0 ? (
+                            <div className="space-y-2">
+                              {topups.map((instrument: any, index: number) => (
                                 <div key={index} className="flex items-center gap-2 p-2 border rounded-md">
                                   <div className="flex-1">
                                     <Select
@@ -706,20 +761,18 @@ export default function Portfolios() {
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
                                 </div>
-                              )
-                            })}
-                            <div className="text-sm text-muted-foreground">
-                              Итого: {calculateTotalShare(profile.initial_replenishment).toFixed(2)}%
-                              {calculateTotalShare(profile.initial_replenishment) !== 100 && profile.initial_replenishment.length > 0 && (
-                                <span className="text-destructive ml-2">
-                                  (должно быть 100%)
-                                </span>
-                              )}
+                              ))}
+                              <div className="text-sm text-muted-foreground">
+                                Итого: {calculateTotalShare(topups).toFixed(2)}%
+                                {calculateTotalShare(topups) !== 100 && topups.length > 0 && (
+                                  <span className="text-destructive ml-2">(должно быть 100%)</span>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">Нет инструментов</p>
-                        )}
+                          ) : (
+                            <p className="text-sm text-muted-foreground">Нет инструментов</p>
+                          )
+                        })()}
                       </div>
                     </div>
                   </div>

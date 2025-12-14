@@ -141,18 +141,21 @@ export interface PortfolioClass {
   name: string
 }
 
-export interface PortfolioRiskProfile {
-  profile_type: 'CONSERVATIVE' | 'BALANCED' | 'AGGRESSIVE'
-  initial_capital: PortfolioInstrument[]
-  initial_replenishment: PortfolioInstrument[]
-}
-
-export type BucketType = 'INITIAL_CAPITAL' | 'INITIAL_REPLENISHMENT'
+export type BucketType = 'INITIAL_CAPITAL' | 'TOP_UP'
 
 export interface PortfolioInstrument {
   product_id: number
   share_percent: number
   order_index: number
+}
+
+export interface PortfolioInstrumentWithBucket extends PortfolioInstrument {
+  bucket_type: BucketType
+}
+
+export interface PortfolioRiskProfile {
+  profile_type: 'CONSERVATIVE' | 'BALANCED' | 'AGGRESSIVE'
+  instruments: PortfolioInstrumentWithBucket[]
 }
 
 export interface SystemSetting {
