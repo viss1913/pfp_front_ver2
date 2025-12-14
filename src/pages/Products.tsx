@@ -50,6 +50,8 @@ export default function Products() {
 
   useEffect(() => {
     loadProducts()
+    // Загружаем типы продуктов заранее
+    loadProductTypes()
   }, [])
 
   const loadProducts = async () => {
@@ -149,10 +151,24 @@ export default function Products() {
   }
 
   const handleSubmit = async () => {
+    // Валидация обязательных полей
+    if (!formData.name?.trim()) {
+      alert('Пожалуйста, укажите название продукта')
+      return
+    }
+    if (!formData.product_type) {
+      alert('Пожалуйста, выберите тип продукта')
+      return
+    }
+    if (!formData.currency) {
+      alert('Пожалуйста, выберите валюту')
+      return
+    }
+
     try {
       // Преобразуем yields в lines для отправки на бэкенд
       const payload = {
-        name: formData.name,
+        name: formData.name.trim(),
         product_type: formData.product_type,
         currency: formData.currency,
         lines: (formData.yields || []).map(yieldItem => ({
@@ -314,9 +330,11 @@ export default function Products() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="product_type">Тип продукта</Label>
+                <Label htmlFor="product_type">
+                  Тип продукта <span className="text-red-500">*</span>
+                </Label>
                 {typesLoading ? (
-                  <div>Загрузка типов...</div>
+                  <div className="text-sm text-muted-foreground">Загрузка типов...</div>
                 ) : typesError ? (
                   <div className="space-y-2">
                     <div className="text-sm text-red-600">Ошибка загрузки типов: {typesError}</div>
@@ -328,16 +346,16 @@ export default function Products() {
                   </div>
                 ) : productTypes && productTypes.length > 0 ? (
                   <Select
-                    value={formData.product_type}
+                    value={formData.product_type || undefined}
                     onValueChange={(value) => setFormData({ ...formData, product_type: value })}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Выберите тип" />
+                    <SelectTrigger className={!formData.product_type ? 'border-red-300' : ''}>
+                      <SelectValue placeholder="Выберите тип продукта" />
                     </SelectTrigger>
                     <SelectContent>
                       {productTypes.map((type) => (
                         <SelectItem key={type.id} value={type.code}>
-                          {type.name}
+                          {type.name} ({type.code})
                         </SelectItem>
                       ))}
                       {/* If the current value is not in active types, show it as disabled */}
@@ -349,7 +367,7 @@ export default function Products() {
                     </SelectContent>
                   </Select>
                 ) : (
-                  <div className="text-sm">Типы продуктов не найдены.</div>
+                  <div className="text-sm text-muted-foreground">Типы продуктов не найдены.</div>
                 )}
               </div>
             </div>

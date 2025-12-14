@@ -29,7 +29,10 @@ components:
         product_type:
           type: string
           description: |
-            Тип продукта (текстовое поле). Примеры: PDS (Программа долгосрочных сбережений), IIS, ISZH, NSZH, DEPOSIT, BOND, STOCK, FUND, OTHER.
+            **ВАЖНО: На фронтенде это поле должно быть выпадающим списком!**
+            Код типа продукта из справочника типов продуктов.
+            Получить список доступных типов: GET /api/pfp/product-types
+            Значение должно быть одним из кодов (code) из этого списка.
             Для софинансирования ПДС используйте тип "PDS".
         currency:
           type: string
@@ -58,6 +61,147 @@ components:
           type: number
         yield_percent:
           type: number
+    ProductCreate:
+      type: object
+      required:
+        - name
+        - product_type
+        - currency
+      description: |
+        Схема для создания нового продукта.
+        Поле product_type должно быть выбрано из списка доступных типов продуктов,
+        полученных через GET /api/pfp/product-types
+      properties:
+        name:
+          type: string
+          description: Название продукта
+        product_type:
+          type: string
+          description: |
+            **ВАЖНО: Это поле должно быть выпадающим списком на фронтенде!**
+            Код типа продукта из справочника типов продуктов.
+            Получить список доступных типов: GET /api/pfp/product-types
+            Значение должно быть одним из кодов (code) из этого списка.
+            Для софинансирования ПДС используйте тип "PDS".
+          example: PDS
+        currency:
+          type: string
+          description: Валюта продукта
+          example: RUB
+        lines:
+          type: array
+          description: Массив линий доходности продукта
+          items:
+            $ref: '#/components/schemas/ProductLine'
+    ProductLine:
+      type: object
+      description: Линия доходности продукта
+      required:
+        - min_term_months
+        - max_term_months
+        - min_amount
+        - max_amount
+        - yield_percent
+      properties:
+        min_term_months:
+          type: number
+          description: Минимальный срок в месяцах (включительно)
+        max_term_months:
+          type: number
+          description: Максимальный срок в месяцах (включительно)
+        min_amount:
+          type: number
+          description: Минимальная сумма (включительно)
+        max_amount:
+          type: number
+          description: Максимальная сумма (включительно)
+        yield_percent:
+          type: number
+          description: Доходность в процентах годовых (%)
+    ProductType:
+      type: object
+      description: Тип продукта
+      properties:
+        id:
+          type: integer
+          description: ID типа продукта
+        code:
+          type: string
+          maxLength: 50
+          description: Код типа продукта (PDS, IIS, ISZH, etc.)
+          example: PDS
+        name:
+          type: string
+          maxLength: 255
+          description: Название типа продукта
+          example: Программа долгосрочных сбережений
+        description:
+          type: string
+          nullable: true
+          description: Описание типа продукта
+        is_active:
+          type: boolean
+          description: Активен ли тип
+          default: true
+        order_index:
+          type: integer
+          description: Порядок сортировки
+          default: 0
+        created_at:
+          type: string
+          format: date-time
+          description: Дата создания
+        updated_at:
+          type: string
+          format: date-time
+          description: Дата обновления
+    ProductTypeCreate:
+      type: object
+      required:
+        - code
+        - name
+      properties:
+        code:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: Код типа продукта (уникальный)
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Название типа продукта
+        description:
+          type: string
+          nullable: true
+          description: Описание типа продукта
+        is_active:
+          type: boolean
+          default: true
+        order_index:
+          type: integer
+          default: 0
+    ProductTypeUpdate:
+      type: object
+      properties:
+        code:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: Код типа продукта (уникальный)
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Название типа продукта
+        description:
+          type: string
+          nullable: true
+          description: Описание типа продукта
+        is_active:
+          type: boolean
+        order_index:
+          type: integer
     Portfolio:
       type: object
       properties:
@@ -585,15 +729,25 @@ paths:
                   $ref: '#/components/schemas/Product'
     post:
       summary: Create product
+      description: |
+        Создает новый продукт. 
+        **Важно для фронтенда:** Поле `product_type` должно быть выпадающим списком,
+        заполняемым из GET /api/pfp/product-types
       requestBody:
+        required: true
         content:
           application/json:
             schema:
-              allOf:
-                - $ref: '#/components/schemas/Product'
+              $ref: '#/components/schemas/ProductCreate'
       responses:
         '201':
           description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          description: Validation error (например, неверный product_type)
           
   /pfp/products/{id}:
     get:
@@ -609,6 +763,10 @@ paths:
           description: OK
     put:
       summary: Update product
+      description: |
+        Обновляет существующий продукт.
+        **Важно для фронтенда:** Поле `product_type` должно быть выпадающим списком,
+        заполняемым из GET /api/pfp/product-types
       parameters:
         - in: path
           name: id
@@ -616,13 +774,22 @@ paths:
           schema:
             type: integer
       requestBody:
+        required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Product'
+              $ref: '#/components/schemas/ProductCreate'
       responses:
         '200':
           description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          description: Validation error (например, неверный product_type)
+        '404':
+          description: Product not found
     delete:
       summary: Delete product
       parameters:
@@ -647,6 +814,119 @@ paths:
       responses:
         '201':
           description: Cloned
+
+  /pfp/product-types:
+    get:
+      summary: Получить все типы продуктов
+      tags:
+        - Products
+      description: Возвращает список всех типов продуктов для выпадающего списка на фронтенде
+      parameters:
+        - in: query
+          name: is_active
+          schema:
+            type: boolean
+          description: Фильтр по активности (true - только активные, false - все)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProductType'
+    post:
+      summary: Создать новый тип продукта (admin only)
+      tags:
+        - Products
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductTypeCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductType'
+        '400':
+          description: Validation error or code already exists
+        '403':
+          description: Forbidden (admin only)
+
+  /pfp/product-types/{id}:
+    get:
+      summary: Получить тип продукта по ID
+      tags:
+        - Products
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductType'
+        '404':
+          description: Product type not found
+    put:
+      summary: Обновить тип продукта (admin only)
+      tags:
+        - Products
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductTypeUpdate'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductType'
+        '400':
+          description: Validation error or code already exists
+        '403':
+          description: Forbidden (admin only)
+        '404':
+          description: Product type not found
+    delete:
+      summary: Удалить тип продукта (admin only)
+      tags:
+        - Products
+      description: Удаляет тип продукта. Нельзя удалить тип, который используется в продуктах.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Deleted
+        '400':
+          description: Cannot delete - type is used by products
+        '403':
+          description: Forbidden (admin only)
+        '404':
+          description: Product type not found
 
   /pfp/portfolios:
     get:
