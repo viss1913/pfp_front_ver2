@@ -25,6 +25,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Edit } from 'lucide-react'
 import TaxBrackets from '@/components/TaxBrackets'
 import PdsCofinancing from '@/components/PdsCofinancing'
+import PassiveIncomeYieldSettings from '@/components/PassiveIncomeYieldSettings'
 
 export default function Settings() {
   const { user } = useAuth()
@@ -111,6 +112,7 @@ export default function Settings() {
           <TabsTrigger value="system">Системные настройки</TabsTrigger>
           <TabsTrigger value="tax">Налоги 2НДФЛ</TabsTrigger>
           <TabsTrigger value="pds">ПДС</TabsTrigger>
+          <TabsTrigger value="passive">Пассивный доход — доходности</TabsTrigger>
         </TabsList>
 
         <TabsContent value="system" className="space-y-4">
@@ -162,6 +164,10 @@ export default function Settings() {
 
         <TabsContent value="pds" className="space-y-4">
           <PdsCofinancing isAdmin={isAdmin} />
+        </TabsContent>
+
+        <TabsContent value="passive" className="space-y-4">
+          <PassiveIncomeYieldSettings isAdmin={isAdmin} />
         </TabsContent>
       </Tabs>
 

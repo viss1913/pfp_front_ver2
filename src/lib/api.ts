@@ -89,6 +89,19 @@ export interface ProductLine {
   yield_percent: number
 }
 
+export interface PassiveIncomeYieldLine {
+  min_term_months: number
+  max_term_months: number
+  min_amount: number
+  max_amount: number
+  yield_percent: number
+}
+
+export interface PassiveIncomeYieldResponse {
+  lines: PassiveIncomeYieldLine[]
+  updated_at: string
+}
+
 export interface Portfolio {
   id: number
   name: string
@@ -356,6 +369,17 @@ export const pdsCofinAPI = {
   },
   deleteBracket: async (id: number): Promise<void> => {
     await api.delete(`/pfp/settings/pds/cofin-income-brackets/${id}`)
+  },
+}
+
+export const passiveIncomeAPI = {
+  getYieldLines: async (): Promise<PassiveIncomeYieldResponse> => {
+    const response = await api.get<PassiveIncomeYieldResponse>('/pfp/settings/passive-income/yield')
+    return response.data
+  },
+  updateYieldLines: async (lines: PassiveIncomeYieldLine[]): Promise<PassiveIncomeYieldResponse> => {
+    const response = await api.put<PassiveIncomeYieldResponse>('/pfp/settings/passive-income/yield', { lines })
+    return response.data
   },
 }
 
