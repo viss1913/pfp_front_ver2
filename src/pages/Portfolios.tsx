@@ -172,9 +172,19 @@ export default function Portfolios() {
   const handleSubmit = async () => {
     try {
       if (editingPortfolio) {
-        await portfoliosAPI.update(editingPortfolio.id, formData)
+        const payload: any = { ...formData }
+        if (formData.risk_profiles !== undefined) {
+          payload.riskProfiles = formData.risk_profiles
+          delete payload.risk_profiles
+        }
+        await portfoliosAPI.update(editingPortfolio.id, payload as any)
       } else {
-        await portfoliosAPI.create(formData)
+        const payload: any = { ...formData }
+        if (formData.risk_profiles !== undefined) {
+          payload.riskProfiles = formData.risk_profiles
+          delete payload.risk_profiles
+        }
+        await portfoliosAPI.create(payload as any)
       }
       setIsDialogOpen(false)
       loadData()
