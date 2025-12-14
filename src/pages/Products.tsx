@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { productsAPI, Product, ProductYield } from '@/lib/api'
+import { productsAPI, productTypesAPI, Product, ProductYield, ProductType } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -44,6 +44,9 @@ export default function Products() {
     max_amount: 0,
     yields: [],
   })
+  const [productTypes, setProductTypes] = useState<ProductType[] | null>(null)
+  const [typesLoading, setTypesLoading] = useState(false)
+  const [typesError, setTypesError] = useState<string | null>(null)
 
   useEffect(() => {
     loadProducts()
@@ -72,7 +75,35 @@ export default function Products() {
       max_amount: 0,
       yields: [],
     })
+    loadProductTypes()
     setIsDialogOpen(true)
+  }
+
+  const loadProductTypes = async (force = false) => {
+    try {
+      setTypesError(null)
+      // sessionStorage cache
+      const cacheKey = 'productTypes'
+      if (!force) {
+        const cached = sessionStorage.getItem(cacheKey)
+        if (cached) {
+          setProductTypes(JSON.parse(cached))
+          return
+        }
+      }
+      setTypesLoading(true)
+      const types = await productTypesAPI.list({ is_active: true })
+      // sort by order_index then name
+      types.sort((a, b) => a.order_index - b.order_index || a.name.localeCompare(b.name))
+      setProductTypes(types)
+      sessionStorage.setItem(cacheKey, JSON.stringify(types))
+    } catch (error: any) {
+      console.error('Failed to load product types:', error)
+      setTypesError(error.response?.data?.error || error.message || 'Ошибка загрузки типов')
+      setProductTypes(null)
+    } finally {
+      setTypesLoading(false)
+    }
   }
 
   const handleEdit = (product: Product) => {
@@ -94,6 +125,7 @@ export default function Products() {
         yield_percent: line.yield_percent,
       })) || [],
     })
+    loadProductTypes()
     setIsDialogOpen(true)
   }
 
@@ -283,13 +315,42 @@ export default function Products() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="product_type">Тип продукта</Label>
-                <Input
-                  id="product_type"
-                  value={formData.product_type}
-                  onChange={(e) =>
-                    setFormData({ ...formData, product_type: e.target.value })
-                  }
-                />
+                {typesLoading ? (
+                  <div>Загрузка типов...</div>
+                ) : typesError ? (
+                  <div className="space-y-2">
+                    <div className="text-sm text-red-600">Ошибка загрузки типов: {typesError}</div>
+                    <div>
+                      <Button size="sm" variant="outline" onClick={() => loadProductTypes(true)}>
+                        Повторить
+                      </Button>
+                    </div>
+                  </div>
+                ) : productTypes && productTypes.length > 0 ? (
+                  <Select
+                    value={formData.product_type}
+                    onValueChange={(value) => setFormData({ ...formData, product_type: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Выберите тип" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {productTypes.map((type) => (
+                        <SelectItem key={type.id} value={type.code}>
+                          {type.name}
+                        </SelectItem>
+                      ))}
+                      {/* If the current value is not in active types, show it as disabled */}
+                      {formData.product_type && !productTypes.find(t => t.code === formData.product_type) && (
+                        <SelectItem value={formData.product_type} disabled>
+                          {formData.product_type} (неактивный)
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="text-sm">Типы продуктов не найдены.</div>
+                )}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">

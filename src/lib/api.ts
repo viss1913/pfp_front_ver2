@@ -73,6 +73,17 @@ export interface Product {
   updated_at?: string
 }
 
+export interface ProductType {
+  id: number
+  code: string
+  name: string
+  description?: string
+  is_active: boolean
+  order_index: number
+  created_at?: string
+  updated_at?: string
+}
+
 export interface ProductYield {
   term_from_months: number
   term_to_months: number
@@ -256,6 +267,13 @@ export const productsAPI = {
   },
   clone: async (id: number): Promise<Product> => {
     const response = await api.post<Product>(`/pfp/products/${id}/clone`)
+    return response.data
+  },
+}
+
+export const productTypesAPI = {
+  list: async (params?: { is_active?: boolean }): Promise<ProductType[]> => {
+    const response = await api.get<ProductType[]>('/pfp/product-types', { params })
     return response.data
   },
 }
