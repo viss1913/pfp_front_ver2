@@ -126,13 +126,9 @@ export interface Portfolio {
   investor_type?: string
   gender?: string
   classes?: number[]
+  riskProfiles?: PortfolioRiskProfile[]
+  // Legacy support
   risk_profiles?: PortfolioRiskProfile[]
-}
-
-export interface PortfolioClass {
-  id: number
-  code: string
-  name: string
 }
 
 export interface PortfolioClass {
@@ -146,70 +142,52 @@ export type BucketType = 'INITIAL_CAPITAL' | 'TOP_UP'
 export interface PortfolioInstrument {
   product_id: number
   share_percent: number
-  order_index: number
-}
-
-export interface PortfolioInstrumentWithBucket extends PortfolioInstrument {
   bucket_type: BucketType
+  order_index?: number | null
 }
 
 export interface PortfolioRiskProfile {
   profile_type: 'CONSERVATIVE' | 'BALANCED' | 'AGGRESSIVE'
-  instruments: PortfolioInstrumentWithBucket[]
+  potential_yield_percent?: number | null
+  instruments: PortfolioInstrument[]
+  // Legacy support
+  initial_capital?: any[]
+  initial_replenishment?: any[]
 }
 
-// Нормализация данных портфеля перед отправкой на сервер
-export function preparePortfolioData(formData: any): any {
-  const data = { ...formData }
+// Helper types for UI compatibility if needed
+export type PortfolioInstrumentWithBucket = PortfolioInstrument
 
-  // Преобразовать classes в числа
-  if (data.classes && Array.isArray(data.classes)) {
-    data.classes = data.classes.map((id: any) => Number(id))
-  }
+// Normalization function as requested
+export function preparePortfolioData(portfolio: any): any {
+  // Try to use riskProfiles, fallback to risk_profiles
+  const sourceRiskProfiles = portfolio.riskProfiles || portfolio.risk_profiles || []
 
-  const ALLOWED = new Set(['CONSERVATIVE', 'BALANCED', 'AGGRESSIVE'])
-
-  // Нормализовать riskProfiles
-  if (data.riskProfiles && Array.isArray(data.riskProfiles)) {
-    data.riskProfiles = data.riskProfiles.map((profile: any) => {
-      const profileType = profile.profile_type?.toString()?.toUpperCase()
-      if (!ALLOWED.has(profileType)) {
-        throw new Error(`Invalid profile_type: ${profile.profile_type}`)
-      }
-
-      const normalized: any = {
-        profile_type: profileType,
-        potential_yield_percent: profile.potential_yield_percent ?? null,
-      }
-
-      // Новый формат (instruments)
-      if (profile.instruments && Array.isArray(profile.instruments)) {
-        normalized.instruments = profile.instruments.map((inst: any) => ({
-          product_id: Number(inst.product_id),
-          share_percent: Number(inst.share_percent),
-          bucket_type: inst.bucket_type || null,
-          order_index: inst.order_index != null ? Number(inst.order_index) : null,
-        }))
-      } else {
-        // Старый формат (initial_capital / initial_replenishment)
-        if (profile.initial_capital && Array.isArray(profile.initial_capital)) {
-          normalized.initial_capital = profile.initial_capital.map((item: any) => ({
-            product_id: Number(item.product_id),
-            share_percent: Number(item.share_percent),
-            order_index: item.order_index != null ? Number(item.order_index) : null,
-          }))
-        }
-        if (profile.initial_replenishment && Array.isArray(profile.initial_replenishment)) {
-          normalized.initial_replenishment = profile.initial_replenishment.map((item: any) => ({
-            product_id: Number(item.product_id),
-            share_percent: Number(item.share_percent),
-            order_index: item.order_index != null ? Number(item.order_index) : null,
-          }))
-        }
-      }
-
-      return normalized
-    })
+  const data = {
+    name: portfolio.name,
+    currency: portfolio.currency,
+    amount_from: Number(portfolio.amount_from),
+    amount_to: Number(portfolio.amount_to),
+    term_from_months: Number(portfolio.term_from_months),
+    term_to_months: Number(portfolio.term_to_months),
+    age_from: portfolio.age_from ? Number(portfolio.age_from) : null,
+    age_to: portfolio.age_to ? Number(portfolio.age_to) : null,
+    investor_type: portfolio.investor_type || null,
+    gender: portfolio.gender || null,
+    classes: portfolio.classes ? portfolio.classes.map((id: any) => {
+      if (id && typeof id === 'object') return Number(id.id)
+      return Number(id)
+    }).filter((n: number) => !isNaN(n)) : [],
+    riskProfiles: sourceRiskProfiles.map((profile: any) => ({
+      profile_type: profile.profile_type.toUpperCase(),
+      potential_yield_percent: profile.potential_yield_percent ?? null,
+      instruments: profile.instruments ? profile.instruments.map((inst: any) => ({
+        product_id: Number(inst.product_id),
+        share_percent: Number(inst.share_percent),
+        bucket_type: inst.bucket_type || null,
+        order_index: inst.order_index ? Number(inst.order_index) : null
+      })) : []
+    }))
   }
 
   return data

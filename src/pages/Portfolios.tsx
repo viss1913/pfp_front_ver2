@@ -49,7 +49,7 @@ export default function Portfolios() {
     investor_type: undefined,
     gender: undefined,
     classes: [],
-    risk_profiles: [
+    riskProfiles: [
       {
         profile_type: 'CONSERVATIVE',
         instruments: [],
@@ -94,8 +94,36 @@ export default function Portfolios() {
   const normalizeRiskProfiles = (profiles: any[] | undefined) => {
     if (!profiles) return undefined
     return profiles.map((p) => {
-      if (p?.instruments && Array.isArray(p.instruments)) return p
+      // Modern format: instruments array with bucket_type
+      if (p.instruments && Array.isArray(p.instruments) && p.instruments.length > 0 && p.instruments[0].bucket_type) {
+        return {
+          profile_type: p.profile_type,
+          potential_yield_percent: p.potential_yield_percent ?? null,
+          instruments: p.instruments.map((inst: any) => ({
+            product_id: Number(inst.product_id),
+            share_percent: Number(inst.share_percent),
+            bucket_type: inst.bucket_type,
+            order_index: inst.order_index !== undefined ? Number(inst.order_index) : null
+          }))
+        }
+      }
+
+      // Legacy format fallback or empty instruments
       const instruments: PortfolioInstrumentWithBucket[] = []
+
+      if (p.instruments && Array.isArray(p.instruments)) {
+        // If instruments act like legacy ones but just array
+        // check if they have bucket_type inside
+        p.instruments.forEach((inst: any) => {
+          instruments.push({
+            product_id: Number(inst.product_id),
+            share_percent: Number(inst.share_percent),
+            bucket_type: inst.bucket_type || 'INITIAL_CAPITAL',
+            order_index: inst.order_index
+          })
+        })
+      }
+
       if (Array.isArray(p?.initial_capital)) {
         instruments.push(
           ...p.initial_capital.map((inst: any, i: number) => ({
@@ -116,59 +144,16 @@ export default function Portfolios() {
           }))
         )
       }
+
       return {
         profile_type: p.profile_type,
+        potential_yield_percent: p.potential_yield_percent ?? null,
         instruments,
       }
     })
   }
 
-  const buildRiskProfilesFromForm = (profiles: any[] | undefined) => {
-    if (!profiles) return undefined
-    return profiles.map((p: any) => {
-      let instruments: any[] = []
-      if (p?.instruments && Array.isArray(p.instruments)) {
-        instruments = p.instruments
-      } else {
-        if (Array.isArray(p?.initial_capital)) {
-          instruments.push(
-            ...p.initial_capital.map((inst: any, i: number) => ({
-              product_id: inst.product_id,
-              share_percent: inst.share_percent,
-              order_index: inst.order_index ?? i,
-              bucket_type: 'INITIAL_CAPITAL',
-            }))
-          )
-        }
-        if (Array.isArray(p?.initial_replenishment)) {
-          instruments.push(
-            ...p.initial_replenishment.map((inst: any, i: number) => ({
-              product_id: inst.product_id,
-              share_percent: inst.share_percent,
-              order_index: inst.order_index ?? i,
-              bucket_type: 'TOP_UP',
-            }))
-          )
-        }
-      }
 
-      const sanitized = (instruments || []).map((inst: any) => {
-        const bt = inst.bucket_type ?? inst.bucketType ?? null
-        const normalizedBucket = bt ? String(bt).toUpperCase() : null
-        return {
-          product_id: Number(inst.product_id),
-          bucket_type: normalizedBucket === 'INITIAL_CAPITAL' ? 'INITIAL_CAPITAL' : (normalizedBucket === 'TOP_UP' ? 'TOP_UP' : null),
-          share_percent: Number(inst.share_percent ?? 0),
-          order_index: inst.order_index !== undefined && inst.order_index !== null ? Number(inst.order_index) : null,
-        }
-      })
-
-      return {
-        profile_type: p.profile_type,
-        instruments: sanitized,
-      }
-    })
-  }
 
   const handleCreate = () => {
     setEditingPortfolio(null)
@@ -184,7 +169,7 @@ export default function Portfolios() {
       investor_type: undefined,
       gender: undefined,
       classes: [],
-      risk_profiles: [
+      riskProfiles: [
         {
           profile_type: 'CONSERVATIVE',
           instruments: [],
@@ -215,8 +200,10 @@ export default function Portfolios() {
       age_to: portfolio.age_to,
       investor_type: portfolio.investor_type,
       gender: portfolio.gender,
-      classes: portfolio.classes || [],
-      risk_profiles: normalizeRiskProfiles((portfolio as any).riskProfiles ?? portfolio.risk_profiles) || [
+      classes: Array.isArray(portfolio.classes)
+        ? portfolio.classes.map((c: any) => Number(typeof c === 'object' && c !== null ? c.id : c))
+        : [],
+      riskProfiles: normalizeRiskProfiles((portfolio as any).riskProfiles ?? portfolio.risk_profiles) || [
         {
           profile_type: 'CONSERVATIVE',
           instruments: [],
@@ -246,51 +233,25 @@ export default function Portfolios() {
 
   const handleSubmit = async () => {
     try {
+      const payload: any = { ...formData }
+
+      // Нормализация и логирование
+      let normalized: any
+      try {
+        normalized = preparePortfolioData(payload)
+      } catch (err: any) {
+        console.error('Normalization error:', err.message || err)
+        alert('Ошибка подготовки данных: ' + (err.message || err))
+        return
+      }
+
+      console.log('=== Отправка портфеля ===')
+      console.log('Отправляемые классы (classes):', normalized.classes)
+      console.log('Данные (полный JSON):', JSON.stringify(normalized, null, 2))
+
       if (editingPortfolio) {
-        const payload: any = { ...formData }
-        if (formData.risk_profiles !== undefined) {
-          payload.riskProfiles = buildRiskProfilesFromForm(formData.risk_profiles)
-          delete payload.risk_profiles
-        }
-
-        // Нормализация и логирование
-        let normalized: any
-        try {
-          normalized = preparePortfolioData(payload)
-        } catch (err: any) {
-          console.error('Normalization error:', err.message || err)
-          alert('Ошибка подготовки данных: ' + (err.message || err))
-          return
-        }
-
-        console.log('=== Отправка портфеля (update) ===')
-        console.log('Данные:', JSON.stringify(normalized, null, 2))
-        console.log('Типы product_id:', normalized.riskProfiles?.map((p: any) => p.instruments?.map((i: any) => typeof i.product_id)))
-        console.log('Типы share_percent:', normalized.riskProfiles?.map((p: any) => p.instruments?.map((i: any) => typeof i.share_percent)))
-
         await portfoliosAPI.update(editingPortfolio.id, normalized as any)
       } else {
-        const payload: any = { ...formData }
-        if (formData.risk_profiles !== undefined) {
-          payload.riskProfiles = buildRiskProfilesFromForm(formData.risk_profiles)
-          delete payload.risk_profiles
-        }
-
-        // Нормализация и логирование
-        let normalized: any
-        try {
-          normalized = preparePortfolioData(payload)
-        } catch (err: any) {
-          console.error('Normalization error:', err.message || err)
-          alert('Ошибка подготовки данных: ' + (err.message || err))
-          return
-        }
-
-        console.log('=== Отправка портфеля (create) ===')
-        console.log('Данные:', JSON.stringify(normalized, null, 2))
-        console.log('Типы product_id:', normalized.riskProfiles?.map((p: any) => p.instruments?.map((i: any) => typeof i.product_id)))
-        console.log('Типы share_percent:', normalized.riskProfiles?.map((p: any) => p.instruments?.map((i: any) => typeof i.share_percent)))
-
         await portfoliosAPI.create(normalized as any)
       }
       setIsDialogOpen(false)
@@ -311,7 +272,7 @@ export default function Portfolios() {
 
   const addInstrument = (profileType: string, bucketType: 'initial_capital' | 'initial_replenishment') => {
     const bucketName = BUCKET_MAP[bucketType]
-    const riskProfiles = formData.risk_profiles?.map((profile) => {
+    const riskProfiles = formData.riskProfiles?.map((profile) => {
       if (profile.profile_type !== profileType) return profile
       const instruments = profile.instruments || []
       const countInBucket = instruments.filter((i: any) => i.bucket_type === bucketName).length
@@ -328,7 +289,7 @@ export default function Portfolios() {
         ],
       }
     }) || []
-    setFormData({ ...formData, risk_profiles: riskProfiles })
+    setFormData({ ...formData, riskProfiles: riskProfiles })
   }
 
   const updateInstrument = (
@@ -339,7 +300,7 @@ export default function Portfolios() {
     value: any
   ) => {
     const bucketName = BUCKET_MAP[bucketType]
-    const riskProfiles = formData.risk_profiles?.map((profile) => {
+    const riskProfiles = formData.riskProfiles?.map((profile) => {
       if (profile.profile_type !== profileType) return profile
       const instruments = profile.instruments || []
       const indices = instruments.map((_, i) => i).filter(i => instruments[i].bucket_type === bucketName)
@@ -348,7 +309,7 @@ export default function Portfolios() {
       const newInstruments = instruments.map((inst, i) => i === realIndex ? { ...inst, [field]: value } : inst)
       return { ...profile, instruments: newInstruments }
     }) || []
-    setFormData({ ...formData, risk_profiles: riskProfiles })
+    setFormData({ ...formData, riskProfiles: riskProfiles })
   }
 
   const removeInstrument = (
@@ -357,7 +318,7 @@ export default function Portfolios() {
     index: number
   ) => {
     const bucketName = BUCKET_MAP[bucketType]
-    const riskProfiles = formData.risk_profiles?.map((profile) => {
+    const riskProfiles = formData.riskProfiles?.map((profile) => {
       if (profile.profile_type !== profileType) return profile
       const instruments = profile.instruments || []
       const indices = instruments.map((_, i) => i).filter(i => instruments[i].bucket_type === bucketName)
@@ -365,11 +326,11 @@ export default function Portfolios() {
       if (realIndex === undefined) return profile
       return { ...profile, instruments: instruments.filter((_, i) => i !== realIndex) }
     }) || []
-    setFormData({ ...formData, risk_profiles: riskProfiles })
+    setFormData({ ...formData, riskProfiles: riskProfiles })
   }
 
   const getRiskProfile = (profileType: string): PortfolioRiskProfile | undefined => {
-    return formData.risk_profiles?.find((p) => p.profile_type === profileType)
+    return formData.riskProfiles?.find((p) => p.profile_type === profileType)
   }
 
   const calculateTotalShare = (instruments: { share_percent: number }[]): number => {
@@ -610,7 +571,7 @@ export default function Portfolios() {
                                 e.stopPropagation()
                                 setFormData({
                                   ...formData,
-                                  classes: formData.classes?.filter(id => id !== classId) || [],
+                                  classes: formData.classes?.filter(id => Number(id) !== Number(classItem.id)) || [],
                                 })
                               }}
                               className="ml-1 hover:text-destructive"
@@ -633,20 +594,19 @@ export default function Portfolios() {
                         return (
                           <div
                             key={classItem.id}
-                            className={`relative flex w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground ${
-                              isSelected ? 'bg-accent' : ''
-                            }`}
+                            className={`relative flex w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground ${isSelected ? 'bg-accent' : ''
+                              }`}
                             onClick={() => {
                               const currentClasses = formData.classes || []
                               if (isSelected) {
                                 setFormData({
                                   ...formData,
-                                  classes: currentClasses.filter(id => id !== classItem.id),
+                                  classes: currentClasses.filter(id => Number(id) !== Number(classItem.id)),
                                 })
                               } else {
                                 setFormData({
                                   ...formData,
-                                  classes: [...currentClasses, classItem.id],
+                                  classes: [...currentClasses, Number(classItem.id)],
                                 })
                               }
                             }}
@@ -679,7 +639,7 @@ export default function Portfolios() {
                 return (
                   <div key={profileType} className="space-y-4 border-t pt-4">
                     <h3 className="font-semibold text-base">Риск-профиль {profileNames[profileType]}</h3>
-                    
+
                     <div className="space-y-4">
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
