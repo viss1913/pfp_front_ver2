@@ -158,6 +158,63 @@ export interface PortfolioRiskProfile {
   instruments: PortfolioInstrumentWithBucket[]
 }
 
+// Нормализация данных портфеля перед отправкой на сервер
+export function preparePortfolioData(formData: any): any {
+  const data = { ...formData }
+
+  // Преобразовать classes в числа
+  if (data.classes && Array.isArray(data.classes)) {
+    data.classes = data.classes.map((id: any) => Number(id))
+  }
+
+  const ALLOWED = new Set(['CONSERVATIVE', 'BALANCED', 'AGGRESSIVE'])
+
+  // Нормализовать riskProfiles
+  if (data.riskProfiles && Array.isArray(data.riskProfiles)) {
+    data.riskProfiles = data.riskProfiles.map((profile: any) => {
+      const profileType = profile.profile_type?.toString()?.toUpperCase()
+      if (!ALLOWED.has(profileType)) {
+        throw new Error(`Invalid profile_type: ${profile.profile_type}`)
+      }
+
+      const normalized: any = {
+        profile_type: profileType,
+        potential_yield_percent: profile.potential_yield_percent ?? null,
+      }
+
+      // Новый формат (instruments)
+      if (profile.instruments && Array.isArray(profile.instruments)) {
+        normalized.instruments = profile.instruments.map((inst: any) => ({
+          product_id: Number(inst.product_id),
+          share_percent: Number(inst.share_percent),
+          bucket_type: inst.bucket_type || null,
+          order_index: inst.order_index != null ? Number(inst.order_index) : null,
+        }))
+      } else {
+        // Старый формат (initial_capital / initial_replenishment)
+        if (profile.initial_capital && Array.isArray(profile.initial_capital)) {
+          normalized.initial_capital = profile.initial_capital.map((item: any) => ({
+            product_id: Number(item.product_id),
+            share_percent: Number(item.share_percent),
+            order_index: item.order_index != null ? Number(item.order_index) : null,
+          }))
+        }
+        if (profile.initial_replenishment && Array.isArray(profile.initial_replenishment)) {
+          normalized.initial_replenishment = profile.initial_replenishment.map((item: any) => ({
+            product_id: Number(item.product_id),
+            share_percent: Number(item.share_percent),
+            order_index: item.order_index != null ? Number(item.order_index) : null,
+          }))
+        }
+      }
+
+      return normalized
+    })
+  }
+
+  return data
+}
+
 export interface SystemSetting {
   key: string
   value: string | number | object
@@ -284,7 +341,33 @@ export const productTypesAPI = {
 export const portfoliosAPI = {
   list: async (params?: { amount_from?: number }): Promise<Portfolio[]> => {
     const response = await api.get<Portfolio[]>('/pfp/portfolios', { params })
-    return response.data
+    const data: any[] = response.data
+
+    // If backend returns new camelCase `riskProfiles`, map it to legacy `risk_profiles`
+    // so admin UI that expects `risk_profiles` continues to work.
+    data.forEach((p) => {
+      if (p.riskProfiles && (!p.risk_profiles || p.risk_profiles.length === 0)) {
+        p.risk_profiles = p.riskProfiles.map((rp: any) => {
+          const initial_capital = (rp.instruments || []).filter((i: any) => i.bucket_type === 'INITIAL_CAPITAL').map((i: any) => ({
+            product_id: Number(i.product_id),
+            order_index: i.order_index != null ? Number(i.order_index) : null,
+            share_percent: Number(i.share_percent),
+          }))
+          const initial_replenishment = (rp.instruments || []).filter((i: any) => i.bucket_type === 'TOP_UP').map((i: any) => ({
+            product_id: Number(i.product_id),
+            order_index: i.order_index != null ? Number(i.order_index) : null,
+            share_percent: Number(i.share_percent),
+          }))
+          return {
+            profile_type: rp.profile_type,
+            initial_capital,
+            initial_replenishment,
+          }
+        })
+      }
+    })
+
+    return data
   },
   get: async (id: number): Promise<Portfolio> => {
     const response = await api.get<Portfolio>(`/pfp/portfolios/${id}`)

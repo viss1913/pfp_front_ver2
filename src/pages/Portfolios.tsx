@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { portfoliosAPI, productsAPI, Portfolio, Product, PortfolioInstrument, PortfolioInstrumentWithBucket, PortfolioRiskProfile, PortfolioClass } from '@/lib/api'
+import { portfoliosAPI, productsAPI, Portfolio, Product, PortfolioInstrument, PortfolioInstrumentWithBucket, PortfolioRiskProfile, PortfolioClass, preparePortfolioData } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -123,6 +123,53 @@ export default function Portfolios() {
     })
   }
 
+  const buildRiskProfilesFromForm = (profiles: any[] | undefined) => {
+    if (!profiles) return undefined
+    return profiles.map((p: any) => {
+      let instruments: any[] = []
+      if (p?.instruments && Array.isArray(p.instruments)) {
+        instruments = p.instruments
+      } else {
+        if (Array.isArray(p?.initial_capital)) {
+          instruments.push(
+            ...p.initial_capital.map((inst: any, i: number) => ({
+              product_id: inst.product_id,
+              share_percent: inst.share_percent,
+              order_index: inst.order_index ?? i,
+              bucket_type: 'INITIAL_CAPITAL',
+            }))
+          )
+        }
+        if (Array.isArray(p?.initial_replenishment)) {
+          instruments.push(
+            ...p.initial_replenishment.map((inst: any, i: number) => ({
+              product_id: inst.product_id,
+              share_percent: inst.share_percent,
+              order_index: inst.order_index ?? i,
+              bucket_type: 'TOP_UP',
+            }))
+          )
+        }
+      }
+
+      const sanitized = (instruments || []).map((inst: any) => {
+        const bt = inst.bucket_type ?? inst.bucketType ?? null
+        const normalizedBucket = bt ? String(bt).toUpperCase() : null
+        return {
+          product_id: Number(inst.product_id),
+          bucket_type: normalizedBucket === 'INITIAL_CAPITAL' ? 'INITIAL_CAPITAL' : (normalizedBucket === 'TOP_UP' ? 'TOP_UP' : null),
+          share_percent: Number(inst.share_percent ?? 0),
+          order_index: inst.order_index !== undefined && inst.order_index !== null ? Number(inst.order_index) : null,
+        }
+      })
+
+      return {
+        profile_type: p.profile_type,
+        instruments: sanitized,
+      }
+    })
+  }
+
   const handleCreate = () => {
     setEditingPortfolio(null)
     setFormData({
@@ -169,7 +216,7 @@ export default function Portfolios() {
       investor_type: portfolio.investor_type,
       gender: portfolio.gender,
       classes: portfolio.classes || [],
-      risk_profiles: normalizeRiskProfiles(portfolio.risk_profiles) || [
+      risk_profiles: normalizeRiskProfiles((portfolio as any).riskProfiles ?? portfolio.risk_profiles) || [
         {
           profile_type: 'CONSERVATIVE',
           instruments: [],
@@ -201,47 +248,64 @@ export default function Portfolios() {
     try {
       if (editingPortfolio) {
         const payload: any = { ...formData }
-          if (formData.risk_profiles !== undefined) {
-            payload.riskProfiles = formData.risk_profiles.map((p: any) => {
-              if (p?.instruments && Array.isArray(p.instruments)) return p
-              const instruments: any[] = []
-              if (Array.isArray(p?.initial_capital)) {
-                instruments.push(...p.initial_capital.map((inst: any, i: number) => ({
-                  product_id: inst.product_id,
-                  share_percent: inst.share_percent,
-                  order_index: inst.order_index ?? i,
-                  bucket_type: 'INITIAL_CAPITAL',
-                })))
-              }
-              if (Array.isArray(p?.initial_replenishment)) {
-                instruments.push(...p.initial_replenishment.map((inst: any, i: number) => ({
-                  product_id: inst.product_id,
-                  share_percent: inst.share_percent,
-                  order_index: inst.order_index ?? i,
-                  bucket_type: 'TOP_UP',
-                })))
-              }
-              return {
-                profile_type: p.profile_type,
-                instruments,
-              }
-            })
-            delete payload.risk_profiles
-          }
-        await portfoliosAPI.update(editingPortfolio.id, payload as any)
+        if (formData.risk_profiles !== undefined) {
+          payload.riskProfiles = buildRiskProfilesFromForm(formData.risk_profiles)
+          delete payload.risk_profiles
+        }
+
+        // Нормализация и логирование
+        let normalized: any
+        try {
+          normalized = preparePortfolioData(payload)
+        } catch (err: any) {
+          console.error('Normalization error:', err.message || err)
+          alert('Ошибка подготовки данных: ' + (err.message || err))
+          return
+        }
+
+        console.log('=== Отправка портфеля (update) ===')
+        console.log('Данные:', JSON.stringify(normalized, null, 2))
+        console.log('Типы product_id:', normalized.riskProfiles?.map((p: any) => p.instruments?.map((i: any) => typeof i.product_id)))
+        console.log('Типы share_percent:', normalized.riskProfiles?.map((p: any) => p.instruments?.map((i: any) => typeof i.share_percent)))
+
+        await portfoliosAPI.update(editingPortfolio.id, normalized as any)
       } else {
         const payload: any = { ...formData }
         if (formData.risk_profiles !== undefined) {
-          payload.riskProfiles = formData.risk_profiles
+          payload.riskProfiles = buildRiskProfilesFromForm(formData.risk_profiles)
           delete payload.risk_profiles
         }
-        await portfoliosAPI.create(payload as any)
+
+        // Нормализация и логирование
+        let normalized: any
+        try {
+          normalized = preparePortfolioData(payload)
+        } catch (err: any) {
+          console.error('Normalization error:', err.message || err)
+          alert('Ошибка подготовки данных: ' + (err.message || err))
+          return
+        }
+
+        console.log('=== Отправка портфеля (create) ===')
+        console.log('Данные:', JSON.stringify(normalized, null, 2))
+        console.log('Типы product_id:', normalized.riskProfiles?.map((p: any) => p.instruments?.map((i: any) => typeof i.product_id)))
+        console.log('Типы share_percent:', normalized.riskProfiles?.map((p: any) => p.instruments?.map((i: any) => typeof i.share_percent)))
+
+        await portfoliosAPI.create(normalized as any)
       }
       setIsDialogOpen(false)
       loadData()
     } catch (error: any) {
-      console.error('Failed to save portfolio:', error)
-      alert(error.response?.data?.error || error.response?.data?.message || 'Ошибка сохранения')
+      console.error('Failed to save portfolio:', error.response?.data || error)
+      if (error.response?.status === 400) {
+        console.error('Детали валидации:', error.response.data.details)
+        alert('Ошибка валидации: ' + JSON.stringify(error.response.data.details))
+      } else if (error.response?.status === 500) {
+        console.error('Server error:', error.response.data)
+        alert('Серверная ошибка при сохранении')
+      } else {
+        alert(error.response?.data?.error || error.response?.data?.message || 'Ошибка сохранения')
+      }
     }
   }
 
