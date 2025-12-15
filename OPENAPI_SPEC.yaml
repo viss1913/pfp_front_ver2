@@ -227,6 +227,53 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PortfolioRiskProfile'
+    PortfolioUpdate:
+      type: object
+      description: |
+        Схема для обновления портфеля. Все поля опциональны.
+        **Важно:** Поддерживаются оба формата для риск-профилей:
+        - `riskProfiles` (camelCase, рекомендуется)
+        - `risk_profiles` (snake_case, для обратной совместимости)
+      properties:
+        name:
+          type: string
+        currency:
+          type: string
+        amount_from:
+          type: number
+        amount_to:
+          type: number
+        term_from_months:
+          type: integer
+        term_to_months:
+          type: integer
+        age_from:
+          type: integer
+          nullable: true
+        age_to:
+          type: integer
+          nullable: true
+        investor_type:
+          type: string
+          nullable: true
+        gender:
+          type: string
+          nullable: true
+        classes:
+          type: array
+          items:
+            type: integer
+          description: Массив ID классов портфеля
+        riskProfiles:
+          type: array
+          items:
+            $ref: '#/components/schemas/PortfolioRiskProfile'
+          description: Массив риск-профилей (camelCase, рекомендуется)
+        risk_profiles:
+          type: array
+          items:
+            $ref: '#/components/schemas/PortfolioRiskProfile'
+          description: Массив риск-профилей (snake_case, для обратной совместимости)
     PortfolioRiskProfile:
       type: object
       properties:
@@ -241,16 +288,37 @@ components:
             $ref: '#/components/schemas/PortfolioInstrument'
     PortfolioInstrument:
       type: object
+      description: |
+        Инструмент портфеля. При GET-запросе может содержать дополнительные поля (id, portfolio_risk_profile_id),
+        которые автоматически игнорируются при PUT-запросе.
       properties:
         product_id:
           type: integer
+          description: ID продукта (обязательно)
         bucket_type:
           type: string
           enum: [INITIAL_CAPITAL, TOP_UP]
+          description: Тип сегмента (INITIAL_CAPITAL - стартовый капитал, TOP_UP - пополнения)
+          nullable: true
         share_percent:
           type: number
+          description: Доля в процентах (обязательно)
         order_index:
           type: integer
+          description: Порядок сортировки (опционально)
+          nullable: true
+        id:
+          type: integer
+          description: |
+            ID инструмента (только в GET-ответе, игнорируется при PUT).
+            Это поле присутствует в ответе API, но не нужно отправлять при обновлении.
+          readOnly: true
+        portfolio_risk_profile_id:
+          type: integer
+          description: |
+            ID профиля риска (только в GET-ответе, игнорируется при PUT).
+            Это поле присутствует в ответе API, но не нужно отправлять при обновлении.
+          readOnly: true
     SystemSetting:
       type: object
       properties:
@@ -964,6 +1032,16 @@ paths:
           description: OK
     put:
       summary: Update portfolio
+      description: |
+        Обновляет существующий портфель. Все поля опциональны (частичное обновление).
+        
+        **Важно для фронтенда:**
+        - Поддерживаются оба формата для риск-профилей:
+          - `riskProfiles` (camelCase, рекомендуется) - соответствует формату ответа API
+          - `risk_profiles` (snake_case) - для обратной совместимости
+        - Можно отправлять данные как есть из GET-ответа: лишние поля (id, portfolio_risk_profile_id) 
+          в инструментах автоматически отфильтруются бэкендом
+        - Формат инструментов: массив `instruments` с полями `product_id`, `bucket_type`, `share_percent`, `order_index`
       parameters:
         - in: path
           name: id
@@ -974,10 +1052,20 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Portfolio'
+              $ref: '#/components/schemas/PortfolioUpdate'
       responses:
         '200':
           description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Portfolio'
+        '400':
+          description: Validation error
+        '403':
+          description: Access denied
+        '404':
+          description: Portfolio not found
     delete:
       summary: Delete portfolio
       parameters:

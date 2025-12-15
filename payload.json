@@ -1,0 +1,62 @@
+﻿{
+    "riskProfiles":  [
+                         {
+                             "profile_type":  "CONSERVATIVE",
+                             "instruments":  [
+                                                 {
+                                                     "share_percent":  50,
+                                                     "order_index":  0,
+                                                     "product_id":  3,
+                                                     "bucket_type":  "INITIAL_CAPITAL"
+                                                 },
+                                                 {
+                                                     "share_percent":  50,
+                                                     "order_index":  1,
+                                                     "product_id":  4,
+                                                     "bucket_type":  "INITIAL_CAPITAL"
+                                                 },
+                                                 {
+                                                     "share_percent":  100,
+                                                     "order_index":  0,
+                                                     "product_id":  4,
+                                                     "bucket_type":  "TOP_UP"
+                                                 }
+                                             ]
+                         },
+                         {
+                             "profile_type":  "BALANCED",
+                             "instruments":  [
+                                                 {
+                                                     "share_percent":  100,
+                                                     "order_index":  0,
+                                                     "product_id":  3,
+                                                     "bucket_type":  "INITIAL_CAPITAL"
+                                                 },
+                                                 {
+                                                     "share_percent":  100,
+                                                     "order_index":  0,
+                                                     "product_id":  3,
+                                                     "bucket_type":  "TOP_UP"
+                                                 }
+                                             ]
+                         },
+                         {
+                             "profile_type":  "AGGRESSIVE",
+                             "instruments":  [
+                                                 {
+                                                     "share_percent":  100,
+                                                     "order_index":  0,
+                                                     "product_id":  3,
+                                                     "bucket_type":  "INITIAL_CAPITAL"
+                                                 },
+                                                 {
+                                                     "share_percent":  100,
+                                                     "order_index":  0,
+                                                     "product_id":  3,
+                                                     "bucket_type":  "TOP_UP"
+                                                 }
+                                             ]
+                         }
+                     ],
+    "name":  "ервый портфель"
+}
