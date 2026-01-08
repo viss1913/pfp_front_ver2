@@ -465,5 +465,55 @@ export const passiveIncomeAPI = {
   },
 }
 
+
+export interface AiAssistant {
+  id: number
+  name: string
+  slug: string
+  context_template: string
+  model: string
+  is_active: boolean
+  created_at?: string
+  updated_at?: string
+}
+
+export interface AiAssistantCreate {
+  name: string
+  slug: string
+  context_template: string
+  model: string
+  is_active: boolean
+}
+
+export interface AiAssistantUpdate {
+  name?: string
+  slug?: string
+  context_template?: string
+  model?: string
+  is_active?: boolean
+}
+
+export const aiAssistantsAPI = {
+  list: async (): Promise<AiAssistant[]> => {
+    const response = await api.get<AiAssistant[]>('/admin/ai-assistants')
+    return response.data
+  },
+  get: async (id: number): Promise<AiAssistant> => {
+    const response = await api.get<AiAssistant>(`/admin/ai-assistants/${id}`)
+    return response.data
+  },
+  create: async (data: AiAssistantCreate): Promise<AiAssistant> => {
+    const response = await api.post<AiAssistant>('/admin/ai-assistants', data)
+    return response.data
+  },
+  update: async (id: number, data: AiAssistantUpdate): Promise<AiAssistant> => {
+    const response = await api.put<AiAssistant>(`/admin/ai-assistants/${id}`, data)
+    return response.data
+  },
+  delete: async (id: number): Promise<void> => {
+    await api.delete(`/admin/ai-assistants/${id}`)
+  },
+}
+
 export default api
 

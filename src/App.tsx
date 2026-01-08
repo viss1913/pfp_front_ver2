@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard'
 import Products from './pages/Products'
 import Portfolios from './pages/Portfolios'
 import Settings from './pages/Settings'
+import AiAssistants from './pages/AiAssistants'
 import Layout from './components/Layout'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -27,6 +28,7 @@ function AppRoutes() {
         <Route index element={<Dashboard />} />
         <Route path="products" element={<Products />} />
         <Route path="portfolios" element={<Portfolios />} />
+        <Route path="ai-assistants" element={<AiAssistants />} />
         <Route path="settings" element={<Settings />} />
       </Route>
     </Routes>
