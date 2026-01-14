@@ -1,7 +1,7 @@
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
-import { LayoutDashboard, Package, Briefcase, Settings, LogOut, Bot } from 'lucide-react'
+import { LayoutDashboard, Package, Briefcase, Settings, LogOut, Bot, Users } from 'lucide-react'
 
 export default function Layout() {
   const { user, logout } = useAuth()
@@ -12,6 +12,7 @@ export default function Layout() {
     { name: 'Продукты', href: '/products', icon: Package },
     { name: 'Портфели', href: '/portfolios', icon: Briefcase },
     { name: 'AI Ассистенты', href: '/ai-assistants', icon: Bot },
+    { name: 'Агенты', href: '/agents', icon: Users },
     { name: 'Настройки', href: '/settings', icon: Settings },
   ]
 
@@ -33,8 +34,8 @@ export default function Layout() {
                     key={item.name}
                     to={item.href}
                     className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${isActive
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                       }`}
                   >
                     <Icon className="h-5 w-5" />

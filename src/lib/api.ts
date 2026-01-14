@@ -515,5 +515,77 @@ export const aiAssistantsAPI = {
   },
 }
 
+export interface Agent {
+  id: number
+  first_name: string
+  last_name: string
+  middle_name?: string
+  email: string
+  phone?: string
+  telegram_bot?: string
+  telegram_channel?: string
+  is_active: boolean
+  region?: string
+  city?: string
+  position_title?: string
+  specialization?: string
+  experience_years?: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface AgentCreate {
+  first_name: string
+  last_name: string
+  middle_name?: string
+  email: string
+  password: string
+  phone?: string
+  telegram_bot?: string
+  telegram_channel?: string
+  is_active?: boolean
+  region?: string
+  city?: string
+  position_title?: string
+  specialization?: string
+  experience_years?: number
+}
+
+export interface AgentUpdate {
+  first_name?: string
+  last_name?: string
+  middle_name?: string
+  email?: string
+  password?: string
+  phone?: string
+  telegram_bot?: string
+  telegram_channel?: string
+  is_active?: boolean
+  region?: string
+  city?: string
+  position_title?: string
+  specialization?: string
+  experience_years?: number
+}
+
+export const agentsAPI = {
+  list: async (params?: { is_active?: boolean; updated_since?: string }): Promise<Agent[]> => {
+    const response = await api.get<Agent[]>('/pfp/agents', { params })
+    return response.data
+  },
+  get: async (id: number): Promise<Agent> => {
+    const response = await api.get<Agent>(`/pfp/agents/${id}`)
+    return response.data
+  },
+  create: async (data: AgentCreate): Promise<Agent> => {
+    const response = await api.post<Agent>('/pfp/agents', data)
+    return response.data
+  },
+  update: async (id: number, data: AgentUpdate): Promise<Agent> => {
+    const response = await api.patch<Agent>(`/pfp/agents/${id}`, data)
+    return response.data
+  },
+}
+
 export default api
 

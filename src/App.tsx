@@ -6,6 +6,7 @@ import Products from './pages/Products'
 import Portfolios from './pages/Portfolios'
 import Settings from './pages/Settings'
 import AiAssistants from './pages/AiAssistants'
+import Agents from './pages/Agents'
 import Layout from './components/Layout'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -29,6 +30,7 @@ function AppRoutes() {
         <Route path="products" element={<Products />} />
         <Route path="portfolios" element={<Portfolios />} />
         <Route path="ai-assistants" element={<AiAssistants />} />
+        <Route path="agents" element={<Agents />} />
         <Route path="settings" element={<Settings />} />
       </Route>
     </Routes>
