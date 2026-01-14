@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
     Dialog,
     DialogContent,
@@ -10,8 +10,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
-import { Agent, AgentCreate, AgentUpdate, agentsAPI } from '@/lib/api'
-import { Switch } from '@/components/ui/switch'
+import { Agent, AgentCreate, agentsAPI } from '@/lib/api'
 
 interface AgentDialogProps {
     open: boolean
@@ -194,10 +193,12 @@ export function AgentDialog({
                                 />
                             </div>
                             <div className="flex items-center space-x-2 pt-8">
-                                <Switch
+                                <input
+                                    type="checkbox"
                                     id="is_active"
+                                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                                     checked={formData.is_active}
-                                    onCheckedChange={(checked) => handleChange('is_active', checked)}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange('is_active', e.target.checked)}
                                 />
                                 <Label htmlFor="is_active">Активен (может входить в систему)</Label>
                             </div>
