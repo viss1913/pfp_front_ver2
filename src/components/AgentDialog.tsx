@@ -36,6 +36,7 @@ export function AgentDialog({
         phone: '',
         telegram_bot: '',
         telegram_channel: '',
+        telegram_channel_id: '',
         is_active: true,
         region: '',
         city: '',
@@ -56,6 +57,7 @@ export function AgentDialog({
                     phone: agent.phone || '',
                     telegram_bot: agent.telegram_bot || '',
                     telegram_channel: agent.telegram_channel || '',
+                    telegram_channel_id: agent.telegram_channel_id || '',
                     is_active: agent.is_active,
                     region: agent.region || '',
                     city: agent.city || '',
@@ -73,6 +75,7 @@ export function AgentDialog({
                     phone: '',
                     telegram_bot: '',
                     telegram_channel: '',
+                    telegram_channel_id: '',
                     is_active: true,
                     region: '',
                     city: '',
@@ -275,6 +278,15 @@ export function AgentDialog({
                                     placeholder="@my_pfp_channel"
                                 />
                             </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="telegram_channel_id">Telegram Channel ID</Label>
+                            <Input
+                                id="telegram_channel_id"
+                                value={formData.telegram_channel_id}
+                                onChange={(e) => handleChange('telegram_channel_id', e.target.value)}
+                                placeholder="-1001234567890"
+                            />
                         </div>
                     </div>
 

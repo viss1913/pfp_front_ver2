@@ -524,6 +524,7 @@ export interface Agent {
   phone?: string
   telegram_bot?: string
   telegram_channel?: string
+  telegram_channel_id?: string
   is_active: boolean
   region?: string
   city?: string
@@ -543,6 +544,7 @@ export interface AgentCreate {
   phone?: string
   telegram_bot?: string
   telegram_channel?: string
+  telegram_channel_id?: string
   is_active?: boolean
   region?: string
   city?: string
@@ -560,6 +562,7 @@ export interface AgentUpdate {
   phone?: string
   telegram_bot?: string
   telegram_channel?: string
+  telegram_channel_id?: string
   is_active?: boolean
   region?: string
   city?: string
