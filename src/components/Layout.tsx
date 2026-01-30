@@ -13,6 +13,7 @@ export default function Layout() {
     { name: 'Портфели', href: '/portfolios', icon: Briefcase },
     { name: 'AI Ассистенты', href: '/ai-assistants', icon: Bot },
     { name: 'Агенты', href: '/agents', icon: Users },
+    { name: 'Конструктор бота', href: '/constructor', icon: Bot },
     { name: 'Настройки', href: '/settings', icon: Settings },
   ]
 

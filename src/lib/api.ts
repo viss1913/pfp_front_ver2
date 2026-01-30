@@ -590,5 +590,66 @@ export const agentsAPI = {
   },
 }
 
+// --- Constructor API ---
+
+export interface CJMTemplate {
+  id?: number
+  command: string
+  classifier: string
+  response: string
+  section: string
+}
+
+export interface BrainContext {
+  id?: number
+  title: string
+  content: string
+  is_active: boolean
+  priority: number
+}
+
+export interface BotInfo {
+  id: number
+  name: string
+  agent_email?: string
+  status: string
+  created_at: string
+}
+
+export const constructorAPI = {
+  // CJM Templates
+  listTemplates: async (): Promise<CJMTemplate[]> => {
+    const response = await api.get<CJMTemplate[]>('/admin/constructor/templates')
+    return response.data
+  },
+  createTemplate: async (data: CJMTemplate): Promise<CJMTemplate> => {
+    const response = await api.post<CJMTemplate>('/admin/constructor/templates', data)
+    return response.data
+  },
+
+  // Brain Contexts
+  listBrainContexts: async (): Promise<BrainContext[]> => {
+    const response = await api.get<BrainContext[]>('/admin/constructor/brain-contexts')
+    return response.data
+  },
+  createBrainContext: async (data: BrainContext): Promise<BrainContext> => {
+    const response = await api.post<BrainContext>('/admin/constructor/brain-contexts', data)
+    return response.data
+  },
+  updateBrainContext: async (id: number, data: Partial<BrainContext>): Promise<BrainContext> => {
+    const response = await api.put<BrainContext>(`/admin/constructor/brain-contexts/${id}`, data)
+    return response.data
+  },
+  deleteBrainContext: async (id: number): Promise<void> => {
+    await api.delete(`/admin/constructor/brain-contexts/${id}`)
+  },
+
+  // Bots
+  listBots: async (): Promise<BotInfo[]> => {
+    const response = await api.get<BotInfo[]>('/admin/constructor/bots')
+    return response.data
+  },
+}
+
 export default api
 

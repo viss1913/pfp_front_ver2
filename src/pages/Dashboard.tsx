@@ -1,5 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Package, Briefcase, Settings, Users } from 'lucide-react'
+import { Package, Briefcase, Settings, Users, Bot } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 
@@ -66,6 +66,25 @@ export default function Dashboard() {
             <Link to="/agents">
               <Button variant="outline" className="w-full">
                 Перейти к агентам
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bot className="h-5 w-5" />
+              Конструктор бота
+            </CardTitle>
+            <CardDescription>
+              Настройка логики, промптов и мониторинг сессий
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link to="/constructor">
+              <Button variant="outline" className="w-full">
+                Перейти к конструктору
               </Button>
             </Link>
           </CardContent>

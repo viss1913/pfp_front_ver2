@@ -7,6 +7,10 @@ import Portfolios from './pages/Portfolios'
 import Settings from './pages/Settings'
 import AiAssistants from './pages/AiAssistants'
 import Agents from './pages/Agents'
+import Constructor from './pages/Constructor'
+import BrainContexts from './pages/Constructor/BrainContexts'
+import CJMTemplates from './pages/Constructor/CJMTemplates'
+import BotSessions from './pages/Constructor/BotSessions'
 import Layout from './components/Layout'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -31,6 +35,11 @@ function AppRoutes() {
         <Route path="portfolios" element={<Portfolios />} />
         <Route path="ai-assistants" element={<AiAssistants />} />
         <Route path="agents" element={<Agents />} />
+        <Route path="constructor" element={<Constructor />}>
+          <Route path="brain" element={<BrainContexts />} />
+          <Route path="cjm" element={<CJMTemplates />} />
+          <Route path="sessions" element={<BotSessions />} />
+        </Route>
         <Route path="settings" element={<Settings />} />
       </Route>
     </Routes>
