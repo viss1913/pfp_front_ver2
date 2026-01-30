@@ -3,12 +3,22 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { Brain, Plus, Loader2, Trash2, Save } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, ChangeEvent } from 'react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { constructorAPI, BrainContext } from '@/lib/api'
 
 export default function BrainContexts() {
     const [contexts, setContexts] = useState<BrainContext[]>([])
     const [loading, setLoading] = useState(true)
+    const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+    const [newContext, setNewContext] = useState<Partial<BrainContext>>({
+        title: '',
+        content: '',
+        is_active: true,
+        priority: 0
+    })
 
     useEffect(() => {
         fetchContexts()
@@ -28,6 +38,23 @@ export default function BrainContexts() {
 
     const handleLocalUpdate = (id: number, updatedData: Partial<BrainContext>) => {
         setContexts(prev => prev.map(c => c.id === id ? { ...c, ...updatedData } : c))
+    }
+
+    const handleAdd = async () => {
+        if (!newContext.title || !newContext.content) {
+            alert('Заполните заголовок и контент')
+            return
+        }
+        try {
+            await constructorAPI.createBrainContext(newContext as BrainContext)
+            alert('Контекст добавлен')
+            await fetchContexts()
+            setIsAddDialogOpen(false)
+            setNewContext({ title: '', content: '', is_active: true, priority: 0 })
+        } catch (error) {
+            console.error('Не удалось добавить контекст', error)
+            alert('Ошибка при добавлении')
+        }
     }
 
     const handleSave = async (context: BrainContext) => {
@@ -71,10 +98,50 @@ export default function BrainContexts() {
                     <Brain className="h-5 w-5" />
                     Глобальный контекст ("Мозг")
                 </h2>
-                <Button size="sm">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Добавить контекст
-                </Button>
+                <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                    <DialogTrigger asChild>
+                        <Button size="sm">
+                            <Plus className="mr-2 h-4 w-4" />
+                            Добавить контекст
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Новый контекст мозга</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <Label>Заголовок</Label>
+                                <Input
+                                    value={newContext.title}
+                                    onChange={(e: ChangeEvent<HTMLInputElement>) => setNewContext({ ...newContext, title: e.target.value })}
+                                    placeholder="Например: Правила вежливости"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Приоритет (чем выше, тем главнее)</Label>
+                                <Input
+                                    type="number"
+                                    value={newContext.priority}
+                                    onChange={(e: ChangeEvent<HTMLInputElement>) => setNewContext({ ...newContext, priority: parseInt(e.target.value) || 0 })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Контент</Label>
+                                <Textarea
+                                    value={newContext.content}
+                                    onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setNewContext({ ...newContext, content: e.target.value })}
+                                    placeholder="Инструкции для ИИ..."
+                                    className="min-h-[150px]"
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Отмена</Button>
+                            <Button onClick={handleAdd}>Создать</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
 
             {loading ? (
@@ -114,7 +181,7 @@ export default function BrainContexts() {
                                 <Textarea
                                     className="font-mono text-sm min-h-[100px] bg-muted/30 focus:bg-background transition-colors"
                                     value={context.content}
-                                    onChange={(e) => context.id && handleLocalUpdate(context.id, { content: e.target.value })}
+                                    onChange={(e: ChangeEvent<HTMLTextAreaElement>) => context.id && handleLocalUpdate(context.id, { content: e.target.value })}
                                 />
                                 <div className="flex justify-end">
                                     <Button size="sm" variant="outline" className="gap-2" onClick={() => handleSave(context)}>

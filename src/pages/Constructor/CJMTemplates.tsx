@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { MessageSquare, Plus, Trash2, Save, Loader2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, ChangeEvent } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
 import { constructorAPI, CJMTemplate } from '@/lib/api'
 
@@ -45,15 +45,15 @@ export default function CJMTemplates() {
     }
 
     const handleSave = async () => {
-        if (!activeTemplate) return
+        if (!activeTemplate || !activeTemplate.id) return
         try {
             setSaving(true)
-            await constructorAPI.createTemplate(activeTemplate)
-            alert('Шаблон сохранен')
+            await constructorAPI.updateTemplate(activeTemplate.id, activeTemplate)
+            alert('Шаблон обновлен')
             await fetchTemplates()
         } catch (error) {
-            console.error('Не удалось сохранить шаблон', error)
-            alert('Ошибка при сохранении')
+            console.error('Не удалось обновить шаблон', error)
+            alert('Ошибка при обновлении')
         } finally {
             setSaving(false)
         }
@@ -76,12 +76,25 @@ export default function CJMTemplates() {
         }
     }
 
-    const handleDelete = (id: number) => {
-        const filtered = templates.filter(t => t.id !== id)
-        setTemplates(filtered)
-        if (activeTabId === id && filtered.length > 0) {
-            const nextId = filtered[0].id
-            if (nextId !== undefined) setActiveTabId(nextId)
+    const handleDelete = async (id: number) => {
+        if (!confirm('Вы уверены, что хотите удалить этот шаблон?')) return
+        try {
+            setSaving(true)
+            await constructorAPI.deleteTemplate(id)
+            const filtered = templates.filter(t => t.id !== id)
+            setTemplates(filtered)
+            if (activeTabId === id && filtered.length > 0) {
+                const nextId = filtered[0].id
+                if (nextId !== undefined) setActiveTabId(nextId)
+            } else if (filtered.length === 0) {
+                setActiveTabId(null)
+            }
+            alert('Шаблон удален')
+        } catch (error) {
+            console.error('Не удалось удалить шаблон', error)
+            alert('Ошибка при удалении')
+        } finally {
+            setSaving(false)
         }
     }
 
@@ -109,7 +122,7 @@ export default function CJMTemplates() {
                                 <Label>Команда (например, /auto)</Label>
                                 <Input
                                     value={newStage.command}
-                                    onChange={e => setNewStage({ ...newStage, command: e.target.value })}
+                                    onChange={(e: ChangeEvent<HTMLInputElement>) => setNewStage({ ...newStage, command: e.target.value })}
                                     placeholder="/command"
                                 />
                             </div>
@@ -163,7 +176,7 @@ export default function CJMTemplates() {
                                 <div className="flex-1">
                                     <Input
                                         value={activeTemplate.command}
-                                        onChange={(e) => handleLocalUpdate({ command: e.target.value })}
+                                        onChange={(e: ChangeEvent<HTMLInputElement>) => handleLocalUpdate({ command: e.target.value })}
                                         className="text-lg font-bold bg-transparent border-none focus-visible:ring-0 px-0 h-auto"
                                         placeholder="Название команды (например, /start)"
                                     />
@@ -207,7 +220,7 @@ export default function CJMTemplates() {
                                         className="font-mono text-sm min-h-[120px] bg-muted/10 focus:bg-background transition-colors"
                                         placeholder="Контекст для определения намерения пользователя..."
                                         value={activeTemplate.classifier}
-                                        onChange={(e) => handleLocalUpdate({ classifier: e.target.value })}
+                                        onChange={(e: ChangeEvent<HTMLTextAreaElement>) => handleLocalUpdate({ classifier: e.target.value })}
                                     />
                                 </div>
 
@@ -217,7 +230,7 @@ export default function CJMTemplates() {
                                         className="font-mono text-sm min-h-[180px] bg-muted/10 focus:bg-background transition-colors"
                                         placeholder="Контекст для генерации ответа..."
                                         value={activeTemplate.response}
-                                        onChange={(e) => handleLocalUpdate({ response: e.target.value })}
+                                        onChange={(e: ChangeEvent<HTMLTextAreaElement>) => handleLocalUpdate({ response: e.target.value })}
                                     />
                                 </div>
 

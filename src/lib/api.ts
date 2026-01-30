@@ -626,14 +626,21 @@ export const constructorAPI = {
     const response = await api.post<CJMTemplate>('/admin/constructor/templates', data)
     return response.data
   },
-
-  // Brain Contexts
-  listBrainContexts: async (): Promise<BrainContext[]> => {
-    const response = await api.get<BrainContext[]>('/admin/constructor/brain-contexts')
+  updateTemplate: async (id: number, data: Partial<CJMTemplate>): Promise<CJMTemplate> => {
+    const response = await api.put<CJMTemplate>(`/admin/constructor/templates/${id}`, data)
     return response.data
   },
+  deleteTemplate: async (id: number): Promise<void> => {
+    await api.delete(`/admin/constructor/templates/${id}`)
+  },
+
+  // Brain Contexts
   createBrainContext: async (data: BrainContext): Promise<BrainContext> => {
     const response = await api.post<BrainContext>('/admin/constructor/brain-contexts', data)
+    return response.data
+  },
+  listBrainContexts: async (): Promise<BrainContext[]> => {
+    const response = await api.get<BrainContext[]>('/admin/constructor/brain-contexts')
     return response.data
   },
   updateBrainContext: async (id: number, data: Partial<BrainContext>): Promise<BrainContext> => {
