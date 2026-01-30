@@ -636,19 +636,19 @@ export const constructorAPI = {
 
   // Brain Contexts
   createBrainContext: async (data: BrainContext): Promise<BrainContext> => {
-    const response = await api.post<BrainContext>('/admin/constructor/brain_contexts', data)
+    const response = await api.post<BrainContext>('/admin/constructor/constructor_brain_contexts', data)
     return response.data
   },
   listBrainContexts: async (): Promise<BrainContext[]> => {
-    const response = await api.get<BrainContext[]>('/admin/constructor/brain_contexts')
+    const response = await api.get<BrainContext[]>('/admin/constructor/constructor_brain_contexts')
     return response.data
   },
   updateBrainContext: async (id: number, data: Partial<BrainContext>): Promise<BrainContext> => {
-    const response = await api.put<BrainContext>(`/admin/constructor/brain_contexts/${id}`, data)
+    const response = await api.put<BrainContext>(`/admin/constructor/constructor_brain_contexts/${id}`, data)
     return response.data
   },
   deleteBrainContext: async (id: number): Promise<void> => {
-    await api.delete(`/admin/constructor/brain_contexts/${id}`)
+    await api.delete(`/admin/constructor/constructor_brain_contexts/${id}`)
   },
 
   // Bots
