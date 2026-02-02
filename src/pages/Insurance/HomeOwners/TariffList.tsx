@@ -29,24 +29,44 @@ export default function TariffList() {
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [selectedTariff, setSelectedTariff] = useState<HomeOwnersTariff | null>(null)
 
-    const fetchData = async () => {
+    const fetchProducts = async () => {
         try {
             setLoading(true)
-            const [tariffsData, productsData] = await Promise.all([
-                homeOwnersAPI.listTariffs(selectedProductId === "all" ? undefined : Number(selectedProductId)),
-                homeOwnersAPI.listProducts()
-            ])
-            setTariffs(tariffsData)
+            const productsData = await homeOwnersAPI.listProducts()
             setProducts(productsData)
+            // If we have products and none is selected, select the first one to avoid 400
+            if (productsData.length > 0 && selectedProductId === "all") {
+                setSelectedProductId(String(productsData[0].id))
+            }
+        } catch (error) {
+            console.error("Failed to fetch products:", error)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const fetchTariffs = async () => {
+        if (selectedProductId === "all") return
+        try {
+            setLoading(true)
+            const data = await homeOwnersAPI.listTariffs(Number(selectedProductId))
+            setTariffs(data)
         } catch (error) {
             console.error("Failed to fetch tariffs:", error)
+            setTariffs([])
         } finally {
             setLoading(false)
         }
     }
 
     useEffect(() => {
-        fetchData()
+        fetchProducts()
+    }, [])
+
+    useEffect(() => {
+        if (selectedProductId !== "all") {
+            fetchTariffs()
+        }
     }, [selectedProductId])
 
     const handleAdd = () => {
@@ -63,7 +83,7 @@ export default function TariffList() {
         try {
             await homeOwnersAPI.upsertTariff(data)
             setIsDialogOpen(false)
-            fetchData()
+            fetchTariffs()
         } catch (error) {
             console.error("Failed to save tariff:", error)
         }
