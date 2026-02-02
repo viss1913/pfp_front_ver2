@@ -842,6 +842,14 @@ components:
           type: string
         is_active:
           type: boolean
+        rate_constructive:
+          type: number
+        rate_finish:
+          type: number
+        rate_property:
+          type: number
+        rate_civil:
+          type: number
     
     HomeOwnersTariff:
       type: object
@@ -885,6 +893,10 @@ components:
           required:
             - property
           properties:
+            constructive:
+              type: number
+            finish:
+              type: number
             property:
               type: number
             civil:
@@ -900,6 +912,10 @@ components:
         limits:
           type: object
           properties:
+            constructive:
+              type: number
+            finish:
+              type: number
             property:
               type: number
             civil:
@@ -1712,6 +1728,18 @@ paths:
       responses:
         '200':
           description: OK
+    delete:
+      summary: Delete insurance product (Admin)
+      tags: [HomeOwnersInsurance]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Deleted
 
   /admin/insurance/home-owners/tariffs:
     get:
@@ -1744,6 +1772,18 @@ paths:
       responses:
         '200':
           description: OK
+    delete:
+      summary: Delete tariff coefficient (Admin)
+      tags: [HomeOwnersInsurance]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Deleted
 
   /pfp/settings/pds/cofin-income-brackets:
     get:

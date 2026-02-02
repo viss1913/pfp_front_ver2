@@ -278,6 +278,10 @@ export interface HomeOwnersProduct {
   name: string
   description?: string
   is_active: boolean
+  rate_constructive: number
+  rate_finish: number
+  rate_property: number
+  rate_civil: number
 }
 
 export interface HomeOwnersTariff {

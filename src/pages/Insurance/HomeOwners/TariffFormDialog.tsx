@@ -136,34 +136,20 @@ export default function TariffFormDialog({
                                 required
                             />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="grid gap-2">
-                                <Label>Тип коэф-та</Label>
-                                <Select
-                                    value={coefficientType}
-                                    onValueChange={(v) => setCoefficientType(v as 'base' | 'multiplier')}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="base">Базовая ставка</SelectItem>
-                                        <SelectItem value="multiplier">Множитель</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="coeff">Значение (число)</Label>
-                                <Input
-                                    id="coeff"
-                                    type="number"
-                                    step="0.0001"
-                                    value={coefficient}
-                                    onChange={(e) => setCoefficient(e.target.value)}
-                                    placeholder="1.0"
-                                    required
-                                />
-                            </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="coeff">Коэффициент (множитель)</Label>
+                            <Input
+                                id="coeff"
+                                type="number"
+                                step="0.0001"
+                                value={coefficient}
+                                onChange={(e) => setCoefficient(e.target.value)}
+                                placeholder="1.0"
+                                required
+                            />
+                            <p className="text-[10px] text-muted-foreground">
+                                Например: 1.8 для повышения цены на 80% или 0.9 для скидки 10%.
+                            </p>
                         </div>
                     </div>
                     <DialogFooter>

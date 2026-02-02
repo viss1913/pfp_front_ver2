@@ -19,7 +19,6 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import TariffFormDialog from "./TariffFormDialog"
-import { Badge } from "@/components/ui/badge"
 
 export default function TariffList() {
     const [tariffs, setTariffs] = useState<HomeOwnersTariff[]>([])
@@ -139,7 +138,6 @@ export default function TariffList() {
                                 <TableHead>Параметр</TableHead>
                                 <TableHead>Значение</TableHead>
                                 <TableHead>Название</TableHead>
-                                <TableHead>Тип</TableHead>
                                 <TableHead>Коэффициент</TableHead>
                                 <TableHead className="text-right">Действия</TableHead>
                             </TableRow>
@@ -147,7 +145,7 @@ export default function TariffList() {
                         <TableBody>
                             {tariffs.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
                                         Тарифы не найдены
                                     </TableCell>
                                 </TableRow>
@@ -160,11 +158,6 @@ export default function TariffList() {
                                         <TableCell><code>{tariff.parameter_name}</code></TableCell>
                                         <TableCell><code>{tariff.parameter_value}</code></TableCell>
                                         <TableCell>{tariff.label}</TableCell>
-                                        <TableCell>
-                                            <Badge variant={tariff.coefficient_type === 'base' ? 'default' : 'outline'}>
-                                                {tariff.coefficient_type === 'base' ? 'Базовый' : 'Множитель'}
-                                            </Badge>
-                                        </TableCell>
                                         <TableCell className="font-mono">{tariff.coefficient}</TableCell>
                                         <TableCell className="text-right">
                                             <div className="flex justify-end gap-2">
