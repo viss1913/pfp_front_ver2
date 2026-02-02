@@ -707,10 +707,27 @@ export const constructorAPI = {
 export const homeOwnersAPI = {
   // Products
   listProducts: async (): Promise<HomeOwnersProduct[]> => {
-    const response = await api.get<HomeOwnersProduct[]>('/pfp/products', {
-      params: { product_type: 'HOME_OWNERS' } // Assuming there's a type backend-side, otherwise fallback logic
-    })
-    return response.data
+    // Try specialized admin endpoint first, fallback to general products if needed
+    try {
+      const response = await api.get<any>('/admin/insurance/home-owners/products')
+      // Handle { success: true, data: [...] } or direct array
+      if (response.data && response.data.success && Array.isArray(response.data.data)) {
+        return response.data.data
+      }
+      if (response.data && response.data.success && Array.isArray(response.data.products)) {
+        return response.data.products
+      }
+      if (Array.isArray(response.data)) {
+        return response.data
+      }
+      return []
+    } catch (e) {
+      // Fallback to pfp/products with filter if admin/insurance/home-owners/products GET is not defined
+      const response = await api.get<any>('/pfp/products', {
+        params: { product_type: 'HOME_OWNERS' }
+      })
+      return Array.isArray(response.data) ? response.data : (response.data?.data || [])
+    }
   },
   upsertProduct: async (data: HomeOwnersProduct): Promise<void> => {
     await api.post('/admin/insurance/home-owners/products', data)
@@ -718,13 +735,20 @@ export const homeOwnersAPI = {
 
   // Tariffs
   listTariffs: async (productId?: number): Promise<HomeOwnersTariff[]> => {
-    // There is no list endpoint for tariffs in the spec, but we might need it.
-    // However, the spec says POST /admin/insurance/home-owners/tariffs is for create/update.
-    // I will assume there's a getter if needed or just handle upsert.
-    const response = await api.get<HomeOwnersTariff[]>('/admin/insurance/home-owners/tariffs', {
+    const response = await api.get<any>('/admin/insurance/home-owners/tariffs', {
       params: { product_id: productId }
     })
-    return response.data
+    // Handle { success: true, data: [...] } or direct array
+    if (response.data && response.data.success && Array.isArray(response.data.data)) {
+      return response.data.data
+    }
+    if (response.data && response.data.success && Array.isArray(response.data.tariffs)) {
+      return response.data.tariffs
+    }
+    if (Array.isArray(response.data)) {
+      return response.data
+    }
+    return []
   },
   upsertTariff: async (data: HomeOwnersTariff): Promise<void> => {
     await api.post('/admin/insurance/home-owners/tariffs', data)
