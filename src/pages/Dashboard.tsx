@@ -55,6 +55,25 @@ export default function Dashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Страхование Имущества
+            </CardTitle>
+            <CardDescription>
+              Управление продуктами и тарифами Home Owners
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link to="/insurance/home-owners">
+              <Button variant="outline" className="w-full">
+                Перейти к страхованию
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
               Агенты
             </CardTitle>

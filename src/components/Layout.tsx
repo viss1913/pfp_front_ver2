@@ -11,6 +11,7 @@ export default function Layout() {
     { name: 'Дашборд', href: '/', icon: LayoutDashboard },
     { name: 'Продукты', href: '/products', icon: Package },
     { name: 'Портфели', href: '/portfolios', icon: Briefcase },
+    { name: 'Страхование Имущества', href: '/insurance/home-owners', icon: Package }, // Use Package for now as Home might not be imported
     { name: 'AI Ассистенты', href: '/ai-assistants', icon: Bot },
     { name: 'Агенты', href: '/agents', icon: Users },
     { name: 'Конструктор бота', href: '/constructor', icon: Bot },

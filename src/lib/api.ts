@@ -271,6 +271,51 @@ export interface PdsCofinIncomeBracketUpdate {
   ratio_denominator?: number
 }
 
+// --- Home Owners Insurance ---
+
+export interface HomeOwnersProduct {
+  id?: number
+  name: string
+  description?: string
+  is_active: boolean
+}
+
+export interface HomeOwnersTariff {
+  id?: number
+  product_id: number
+  parameter_name: string
+  parameter_value: string
+  coefficient: number
+  label: string
+  coefficient_type: 'base' | 'multiplier'
+}
+
+export interface HomeOwnersCalculationRequest {
+  product_id: number
+  client_id?: number | null
+  object_params: Record<string, any>
+  limits: {
+    property: number
+    civil?: number
+  }
+}
+
+export interface HomeOwnersCalculationResponse {
+  total_premium: number
+  total_limit: number
+  limits: {
+    property: number
+    civil?: number
+  }
+  currency: string
+  calculation_steps: Array<{
+    parameter: string
+    value: string
+    coefficient: number
+    premium_after: number
+  }>
+}
+
 // API методы
 export const authAPI = {
   login: async (data: LoginRequest): Promise<LoginResponse> => {
@@ -594,6 +639,7 @@ export const agentsAPI = {
 
 export interface CJMTemplate {
   id?: number
+  bot_id?: number
   command: string
   classifier: string
   response: string
@@ -619,19 +665,19 @@ export interface BotInfo {
 export const constructorAPI = {
   // CJM Templates
   listTemplates: async (): Promise<CJMTemplate[]> => {
-    const response = await api.get<CJMTemplate[]>('/admin/constructor/templates')
+    const response = await api.get<CJMTemplate[]>('/admin/constructor/constructor_commands')
     return response.data
   },
   createTemplate: async (data: CJMTemplate): Promise<CJMTemplate> => {
-    const response = await api.post<CJMTemplate>('/admin/constructor/templates', data)
+    const response = await api.post<CJMTemplate>('/admin/constructor/constructor_commands', data)
     return response.data
   },
   updateTemplate: async (id: number, data: Partial<CJMTemplate>): Promise<CJMTemplate> => {
-    const response = await api.put<CJMTemplate>(`/admin/constructor/templates/${id}`, data)
+    const response = await api.put<CJMTemplate>(`/admin/constructor/constructor_commands/${id}`, data)
     return response.data
   },
   deleteTemplate: async (id: number): Promise<void> => {
-    await api.delete(`/admin/constructor/templates/${id}`)
+    await api.delete(`/admin/constructor/constructor_commands/${id}`)
   },
 
   // Brain Contexts
@@ -653,8 +699,35 @@ export const constructorAPI = {
 
   // Bots
   listBots: async (): Promise<BotInfo[]> => {
-    const response = await api.get<BotInfo[]>('/admin/constructor/bots')
+    const response = await api.get<BotInfo[]>('/admin/constructor/constructor_bots')
     return response.data
+  },
+}
+
+export const homeOwnersAPI = {
+  // Products
+  listProducts: async (): Promise<HomeOwnersProduct[]> => {
+    const response = await api.get<HomeOwnersProduct[]>('/pfp/products', {
+      params: { product_type: 'HOME_OWNERS' } // Assuming there's a type backend-side, otherwise fallback logic
+    })
+    return response.data
+  },
+  upsertProduct: async (data: HomeOwnersProduct): Promise<void> => {
+    await api.post('/admin/insurance/home-owners/products', data)
+  },
+
+  // Tariffs
+  listTariffs: async (productId?: number): Promise<HomeOwnersTariff[]> => {
+    // There is no list endpoint for tariffs in the spec, but we might need it.
+    // However, the spec says POST /admin/insurance/home-owners/tariffs is for create/update.
+    // I will assume there's a getter if needed or just handle upsert.
+    const response = await api.get<HomeOwnersTariff[]>('/admin/insurance/home-owners/tariffs', {
+      params: { product_id: productId }
+    })
+    return response.data
+  },
+  upsertTariff: async (data: HomeOwnersTariff): Promise<void> => {
+    await api.post('/admin/insurance/home-owners/tariffs', data)
   },
 }
 
