@@ -10,7 +10,7 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, Edit2, Loader2 } from "lucide-react"
+import { Plus, Edit2, Loader2, Trash2 } from "lucide-react"
 import ProductFormDialog from "./ProductFormDialog"
 import { Badge } from "@/components/ui/badge"
 
@@ -56,6 +56,16 @@ export default function ProductsList() {
         }
     }
 
+    const handleDelete = async (id: number) => {
+        if (!confirm("Вы уверены, что хотите удалить этот продукт и все связанные с ним данные?")) return
+        try {
+            await homeOwnersAPI.deleteProduct(id)
+            fetchProducts()
+        } catch (error) {
+            console.error("Failed to delete product:", error)
+        }
+    }
+
     return (
         <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -98,9 +108,19 @@ export default function ProductsList() {
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <Button variant="ghost" size="icon" onClick={() => handleEdit(product)}>
-                                                <Edit2 className="h-4 w-4" />
-                                            </Button>
+                                            <div className="flex justify-end gap-2">
+                                                <Button variant="ghost" size="icon" onClick={() => handleEdit(product)}>
+                                                    <Edit2 className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="text-destructive hover:text-white hover:bg-destructive"
+                                                    onClick={() => product.id && handleDelete(product.id)}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ))

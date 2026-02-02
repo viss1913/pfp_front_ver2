@@ -732,6 +732,9 @@ export const homeOwnersAPI = {
   upsertProduct: async (data: HomeOwnersProduct): Promise<void> => {
     await api.post('/admin/insurance/home-owners/products', data)
   },
+  deleteProduct: async (id: number): Promise<void> => {
+    await api.delete(`/admin/insurance/home-owners/products/${id}`)
+  },
 
   // Tariffs
   listTariffs: async (productId?: number): Promise<HomeOwnersTariff[]> => {
@@ -752,6 +755,9 @@ export const homeOwnersAPI = {
   },
   upsertTariff: async (data: HomeOwnersTariff): Promise<void> => {
     await api.post('/admin/insurance/home-owners/tariffs', data)
+  },
+  deleteTariff: async (id: number): Promise<void> => {
+    await api.delete(`/admin/insurance/home-owners/tariffs/${id}`)
   },
 }
 

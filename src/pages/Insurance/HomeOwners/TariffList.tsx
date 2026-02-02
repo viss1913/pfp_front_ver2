@@ -10,7 +10,7 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, Edit2, Loader2, Filter } from "lucide-react"
+import { Plus, Edit2, Loader2, Filter, Trash2 } from "lucide-react"
 import {
     Select,
     SelectContent,
@@ -89,6 +89,16 @@ export default function TariffList() {
         }
     }
 
+    const handleDelete = async (id: number) => {
+        if (!confirm("Вы уверены, что хотите удалить этот коэффициент?")) return
+        try {
+            await homeOwnersAPI.deleteTariff(id)
+            fetchTariffs()
+        } catch (error) {
+            console.error("Failed to delete tariff:", error)
+        }
+    }
+
     return (
         <Card>
             <CardHeader className="flex flex-row items-center justify-between">
@@ -157,9 +167,19 @@ export default function TariffList() {
                                         </TableCell>
                                         <TableCell className="font-mono">{tariff.coefficient}</TableCell>
                                         <TableCell className="text-right">
-                                            <Button variant="ghost" size="icon" onClick={() => handleEdit(tariff)}>
-                                                <Edit2 className="h-4 w-4" />
-                                            </Button>
+                                            <div className="flex justify-end gap-2">
+                                                <Button variant="ghost" size="icon" onClick={() => handleEdit(tariff)}>
+                                                    <Edit2 className="h-4 w-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    className="text-destructive hover:text-white hover:bg-destructive"
+                                                    onClick={() => tariff.id && handleDelete(tariff.id)}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 ))
