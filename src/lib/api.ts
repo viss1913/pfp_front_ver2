@@ -765,5 +765,40 @@ export const homeOwnersAPI = {
   },
 }
 
+// --- PFP Calculations ---
+
+export interface PfpCalculation {
+  pfp_id: number
+  client_fio: string
+  agent_fio: string
+  agent_email: string
+  status: 'THINKING' | 'BOUGHT' | 'REFUSED'
+  has_calculation: boolean
+  created_at: string
+}
+
+export interface PfpCalculationResponse {
+  data: PfpCalculation[]
+  pagination: {
+    total: number
+    page: number
+    limit: number
+    totalPages: number
+  }
+}
+
+export const pfpAPI = {
+  listCalculations: async (params?: {
+    page?: number
+    limit?: number
+    search?: string
+    sort?: string
+    order?: 'asc' | 'desc'
+  }): Promise<PfpCalculationResponse> => {
+    const response = await api.get<PfpCalculationResponse>('/admin/pfp/calculations', { params })
+    return response.data
+  },
+}
+
 export default api
 

@@ -93,6 +93,25 @@ export default function Dashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Клиенты
+            </CardTitle>
+            <CardDescription>
+              Мониторинг расчетов и активности клиентов
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link to="/clients">
+              <Button variant="outline" className="w-full">
+                Перейти к клиентам
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
               <Bot className="h-5 w-5" />
               Конструктор бота
             </CardTitle>

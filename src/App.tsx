@@ -7,6 +7,7 @@ import Portfolios from './pages/Portfolios'
 import Settings from './pages/Settings'
 import AiAssistants from './pages/AiAssistants'
 import Agents from './pages/Agents'
+import Clients from './pages/Clients'
 import Constructor from './pages/Constructor'
 import BrainContexts from './pages/Constructor/BrainContexts'
 import CJMTemplates from './pages/Constructor/CJMTemplates'
@@ -37,6 +38,7 @@ function AppRoutes() {
         <Route path="insurance/home-owners" element={<HomeOwners />} />
         <Route path="ai-assistants" element={<AiAssistants />} />
         <Route path="agents" element={<Agents />} />
+        <Route path="clients" element={<Clients />} />
         <Route path="constructor" element={<Constructor />}>
           <Route path="brain" element={<BrainContexts />} />
           <Route path="cjm" element={<CJMTemplates />} />
