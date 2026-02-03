@@ -10,16 +10,8 @@ import {
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import {
-    Pagination,
-    PaginationContent,
-    PaginationItem,
-    PaginationLink,
-    PaginationNext,
-    PaginationPrevious,
-} from '@/components/ui/pagination'
 import { pfpAPI, PfpCalculation } from '@/lib/api'
-import { Search, CheckCircle2, Circle } from 'lucide-react'
+import { Search, CheckCircle2, Circle, ChevronLeft, ChevronRight } from 'lucide-react'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 
@@ -80,7 +72,7 @@ export default function Clients() {
                     <Input
                         placeholder="Поиск по ФИО или Email..."
                         value={search}
-                        onChange={(e) => {
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                             setSearch(e.target.value)
                             setPage(1)
                         }}
@@ -128,11 +120,13 @@ export default function Clients() {
                                     <TableCell>{calc.agent_email}</TableCell>
                                     <TableCell>{getStatusBadge(calc.status)}</TableCell>
                                     <TableCell className="text-center">
-                                        {calc.has_calculation ? (
-                                            <CheckCircle2 className="h-5 w-5 text-green-500 mx-auto" title="Расчет готов" />
-                                        ) : (
-                                            <Circle className="h-5 w-5 text-gray-300 mx-auto" title="Нет расчета" />
-                                        )}
+                                        <div className="flex justify-center">
+                                            {calc.has_calculation ? (
+                                                <CheckCircle2 className="h-5 w-5 text-green-500" />
+                                            ) : (
+                                                <Circle className="h-5 w-5 text-gray-300" />
+                                            )}
+                                        </div>
                                     </TableCell>
                                     <TableCell>
                                         {format(new Date(calc.created_at), 'dd.MM.yyyy HH:mm', { locale: ru })}
@@ -145,44 +139,29 @@ export default function Clients() {
             </div>
 
             {totalPages > 1 && (
-                <Pagination>
-                    <PaginationContent>
-                        <PaginationItem>
-                            <PaginationPrevious
-                                href="#"
-                                onClick={(e) => {
-                                    e.preventDefault()
-                                    if (page > 1) setPage(page - 1)
-                                }}
-                                className={page === 1 ? 'pointer-events-none opacity-50' : ''}
-                            />
-                        </PaginationItem>
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                            <PaginationItem key={p}>
-                                <PaginationLink
-                                    href="#"
-                                    isActive={p === page}
-                                    onClick={(e) => {
-                                        e.preventDefault()
-                                        setPage(p)
-                                    }}
-                                >
-                                    {p}
-                                </PaginationLink>
-                            </PaginationItem>
-                        ))}
-                        <PaginationItem>
-                            <PaginationNext
-                                href="#"
-                                onClick={(e) => {
-                                    e.preventDefault()
-                                    if (page < totalPages) setPage(page + 1)
-                                }}
-                                className={page === totalPages ? 'pointer-events-none opacity-50' : ''}
-                            />
-                        </PaginationItem>
-                    </PaginationContent>
-                </Pagination>
+                <div className="flex items-center justify-center space-x-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                    >
+                        <ChevronLeft className="h-4 w-4 mr-1" />
+                        Назад
+                    </Button>
+                    <div className="text-sm font-medium">
+                        Страница {page} из {totalPages}
+                    </div>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={page === totalPages}
+                    >
+                        Вперед
+                        <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                </div>
             )}
         </div>
     )
