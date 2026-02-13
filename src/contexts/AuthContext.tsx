@@ -58,6 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const selectProject = (project: Project | null) => {
+    sessionStorage.clear() // Очищаем кэш справочников при смене контекста
     if (project) {
       localStorage.setItem('active_project', JSON.stringify(project))
       localStorage.setItem('project_key', project.public_key)
@@ -72,6 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const logout = () => {
+    sessionStorage.clear()
     localStorage.removeItem('token')
     localStorage.removeItem('user')
     localStorage.removeItem('active_project')

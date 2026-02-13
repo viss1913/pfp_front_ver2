@@ -52,12 +52,12 @@ export default function Products() {
 
   useEffect(() => {
     loadProducts()
-    // Загружаем типы продуктов заранее
     loadProductTypes()
-  }, [])
+  }, [activeProject]) // Перезагружаем при смене проекта
 
   const loadProducts = async () => {
     try {
+      setLoading(true)
       const data = await productsAPI.list({ includeDefaults: !activeProject })
       const filtered = activeProject
         ? data.filter(p => p.project_id === activeProject.id)
@@ -89,21 +89,31 @@ export default function Products() {
   const loadProductTypes = async (force = false) => {
     try {
       setTypesError(null)
-      // sessionStorage cache
-      const cacheKey = 'productTypes'
+      const cacheKey = `productTypes_${activeProject?.id || 'global'}`
+
       if (!force) {
         const cached = sessionStorage.getItem(cacheKey)
         if (cached) {
-          setProductTypes(JSON.parse(cached))
-          return
+          const parsed = JSON.parse(cached)
+          if (parsed && parsed.length > 0) {
+            setProductTypes(parsed)
+            return
+          }
         }
       }
+
       setTypesLoading(true)
       const types = await productTypesAPI.list({ is_active: true })
-      // sort by order_index then name
-      types.sort((a, b) => a.order_index - b.order_index || a.name.localeCompare(b.name))
-      setProductTypes(types)
-      sessionStorage.setItem(cacheKey, JSON.stringify(types))
+
+      if (types && types.length > 0) {
+        types.sort((a, b) => a.order_index - b.order_index || a.name.localeCompare(b.name))
+        setProductTypes(types)
+        sessionStorage.setItem(cacheKey, JSON.stringify(types))
+      } else {
+        setProductTypes([])
+        // Если пришел пустой список, удаляем кэш, чтобы при следующем открытии попробовать снова
+        sessionStorage.removeItem(cacheKey)
+      }
     } catch (error: any) {
       console.error('Failed to load product types:', error)
       setTypesError(error.response?.data?.error || error.message || 'Ошибка загрузки типов')

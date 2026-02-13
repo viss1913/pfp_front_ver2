@@ -22,18 +22,18 @@ api.interceptors.request.use(
     const projectId = localStorage.getItem('project_id')
 
     if (projectKey) {
-      config.headers['x-project-key'] = projectKey
+      config.headers['X-Project-Key'] = projectKey
     }
 
     if (projectId) {
-      config.headers['x-project-id'] = projectId
+      config.headers['X-Project-ID'] = projectId
     }
 
-    // Отладочный лог для проверки заголовков в консоли браузера
+    // Отладочный лог для консоли
     if (projectKey || projectId) {
-      console.log(`[API Request] ${config.method?.toUpperCase()} ${config.url}`, {
-        'x-project-key': projectKey,
-        'x-project-id': projectId
+      console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`, {
+        'X-Project-Key': projectKey,
+        'X-Project-ID': projectId
       })
     }
 
