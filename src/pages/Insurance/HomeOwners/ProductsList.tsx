@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react"
 import { homeOwnersAPI, HomeOwnersProduct } from "@/lib/api"
+import { useAuth } from "@/contexts/AuthContext"
 import { Button } from "@/components/ui/button"
 import {
     Table,
@@ -15,6 +16,7 @@ import ProductFormDialog from "./ProductFormDialog"
 import { Badge } from "@/components/ui/badge"
 
 export default function ProductsList() {
+    const { activeProject } = useAuth()
     const [products, setProducts] = useState<HomeOwnersProduct[]>([])
     const [loading, setLoading] = useState(true)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -24,7 +26,10 @@ export default function ProductsList() {
         try {
             setLoading(true)
             const data = await homeOwnersAPI.listProducts()
-            setProducts(data)
+            const filtered = activeProject
+                ? data.filter(p => p.project_id === activeProject.id)
+                : data
+            setProducts(filtered)
         } catch (error) {
             console.error("Failed to fetch products:", error)
         } finally {

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { portfoliosAPI, productsAPI, Portfolio, Product, PortfolioInstrument, PortfolioInstrumentWithBucket, PortfolioRiskProfile, PortfolioClass, preparePortfolioData } from '@/lib/api'
+import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -30,6 +31,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Plus, Edit, Trash2, X } from 'lucide-react'
 
 export default function Portfolios() {
+  const { activeProject } = useAuth()
   const [portfolios, setPortfolios] = useState<Portfolio[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [classes, setClasses] = useState<PortfolioClass[]>([])
@@ -72,12 +74,21 @@ export default function Portfolios() {
   const loadData = async () => {
     try {
       const [portfoliosData, productsData, classesData] = await Promise.all([
-        portfoliosAPI.list(),
-        productsAPI.list(),
+        portfoliosAPI.list({ includeDefaults: !activeProject }),
+        productsAPI.list({ includeDefaults: !activeProject }),
         portfoliosAPI.getClasses(),
       ])
-      setPortfolios(portfoliosData)
-      setProducts(productsData)
+
+      const filteredPortfolios = activeProject
+        ? portfoliosData.filter(p => p.project_id === activeProject.id)
+        : portfoliosData
+
+      const filteredProducts = activeProject
+        ? productsData.filter(p => p.project_id === activeProject.id)
+        : productsData
+
+      setPortfolios(filteredPortfolios)
+      setProducts(filteredProducts)
       setClasses(classesData)
     } catch (error) {
       console.error('Failed to load data:', error)

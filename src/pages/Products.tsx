@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { productsAPI, productTypesAPI, Product, ProductYield, ProductType } from '@/lib/api'
+import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -30,6 +31,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Plus, Edit, Trash2, Copy } from 'lucide-react'
 
 export default function Products() {
+  const { activeProject } = useAuth()
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -56,8 +58,11 @@ export default function Products() {
 
   const loadProducts = async () => {
     try {
-      const data = await productsAPI.list({ includeDefaults: true })
-      setProducts(data)
+      const data = await productsAPI.list({ includeDefaults: !activeProject })
+      const filtered = activeProject
+        ? data.filter(p => p.project_id === activeProject.id)
+        : data
+      setProducts(filtered)
     } catch (error) {
       console.error('Failed to load products:', error)
     } finally {

@@ -77,6 +77,7 @@ export interface LoginResponse {
 
 export interface Product {
   id: number
+  project_id: number
   name: string
   product_type: string
   currency: string
@@ -135,6 +136,7 @@ export interface PassiveIncomeYieldResponse {
 
 export interface Portfolio {
   id: number
+  project_id: number
   name: string
   currency: string
   amount_from: number
@@ -295,6 +297,7 @@ export interface PdsCofinIncomeBracketUpdate {
 
 export interface HomeOwnersProduct {
   id?: number
+  project_id?: number
   name: string
   description?: string
   is_active: boolean
@@ -386,7 +389,7 @@ export const productTypesAPI = {
 }
 
 export const portfoliosAPI = {
-  list: async (params?: { amount_from?: number }): Promise<Portfolio[]> => {
+  list: async (params?: { amount_from?: number; includeDefaults?: boolean }): Promise<Portfolio[]> => {
     const response = await api.get<Portfolio[]>('/pfp/portfolios', { params })
     const data: any[] = response.data
 
