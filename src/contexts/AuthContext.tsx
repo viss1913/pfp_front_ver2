@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import { authAPI } from '@/lib/api'
+import { authAPI, Project } from '@/lib/api'
 
 interface User {
   id: number
@@ -11,25 +11,40 @@ interface User {
 
 interface AuthContextType {
   user: User | null
+  activeProject: Project | null
   isAuthenticated: boolean
   login: (email: string, password: string) => Promise<void>
   logout: () => void
+  selectProject: (project: Project | null) => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
+  const [activeProject, setActiveProject] = useState<Project | null>(null)
 
   useEffect(() => {
     const token = localStorage.getItem('token')
     const userStr = localStorage.getItem('user')
+    const projectStr = localStorage.getItem('active_project')
+
     if (token && userStr) {
       try {
         setUser(JSON.parse(userStr))
       } catch (e) {
         localStorage.removeItem('token')
         localStorage.removeItem('user')
+      }
+    }
+
+    if (projectStr) {
+      try {
+        const project = JSON.parse(projectStr)
+        setActiveProject(project)
+      } catch (e) {
+        localStorage.removeItem('active_project')
+        localStorage.removeItem('project_key')
       }
     }
   }, [])
@@ -41,19 +56,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(response.user)
   }
 
+  const selectProject = (project: Project | null) => {
+    if (project) {
+      localStorage.setItem('active_project', JSON.stringify(project))
+      localStorage.setItem('project_key', project.public_key)
+      setActiveProject(project)
+    } else {
+      localStorage.removeItem('active_project')
+      localStorage.removeItem('project_key')
+      setActiveProject(null)
+    }
+  }
+
   const logout = () => {
     localStorage.removeItem('token')
     localStorage.removeItem('user')
+    localStorage.removeItem('active_project')
+    localStorage.removeItem('project_key')
     setUser(null)
+    setActiveProject(null)
   }
 
   return (
     <AuthContext.Provider
       value={{
         user,
+        activeProject,
         isAuthenticated: !!user,
         login,
         logout,
+        selectProject,
       }}
     >
       {children}

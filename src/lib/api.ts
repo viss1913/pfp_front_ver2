@@ -17,6 +17,11 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
+
+    const projectKey = localStorage.getItem('project_key')
+    if (projectKey) {
+      config.headers['X-Project-Key'] = projectKey
+    }
     return config
   },
   (error) => {
@@ -796,6 +801,59 @@ export const pfpAPI = {
     order?: 'asc' | 'desc'
   }): Promise<PfpCalculationResponse> => {
     const response = await api.get<PfpCalculationResponse>('/admin/pfp/calculations', { params })
+    return response.data
+  },
+}
+
+// --- Admin Management API (Super Admin) ---
+
+export interface Project {
+  id: number
+  name: string
+  slug: string
+  public_key: string
+  status: 'active' | 'suspended'
+  settings: Record<string, any>
+  created_at: string
+  updated_at: string
+}
+
+export interface AdminUser {
+  id: number
+  email: string
+  name: string
+  role: 'super_admin' | 'admin' | 'agent'
+  projectId: number | null
+  is_active: boolean
+  projectName?: string
+}
+
+export const adminManagementAPI = {
+  // Projects
+  listProjects: async (): Promise<Project[]> => {
+    const response = await api.get<Project[]>('/admin/projects')
+    return response.data
+  },
+  createProject: async (data: { name: string; slug?: string; settings?: any }): Promise<Project> => {
+    const response = await api.post<Project>('/admin/projects', data)
+    return response.data
+  },
+  updateProject: async (id: number, data: Partial<Project>): Promise<Project> => {
+    const response = await api.put<Project>(`/admin/projects/${id}`, data)
+    return response.data
+  },
+
+  // Global Users
+  listUsers: async (): Promise<AdminUser[]> => {
+    const response = await api.get<AdminUser[]>('/admin/users')
+    return response.data
+  },
+  createUser: async (data: Partial<AdminUser> & { password?: string }): Promise<AdminUser> => {
+    const response = await api.post<AdminUser>('/admin/users', data)
+    return response.data
+  },
+  updateUser: async (id: number, data: Partial<AdminUser>): Promise<AdminUser> => {
+    const response = await api.put<AdminUser>(`/admin/users/${id}`, data)
     return response.data
   },
 }
