@@ -86,13 +86,24 @@ export default function AdminUsers() {
         return <div className="flex h-[50vh] items-center justify-center">Загрузка данных...</div>
     }
 
+    const displayedUsers = users.filter(user => {
+        const isNotAgent = user.role !== 'agent'
+        const matchesProject = activeProject ? user.projectId === activeProject.id : true
+        return isNotAgent && matchesProject
+    })
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Управление пользователями</h2>
+                    <h2 className="text-3xl font-bold tracking-tight">
+                        {activeProject ? `Администраторы: ${activeProject.name}` : 'Все администраторы'}
+                    </h2>
                     <p className="text-muted-foreground">
-                        Создание и управление учетными записями администраторов и агентов
+                        {activeProject
+                            ? `Управление администраторами проекта ${activeProject.name}`
+                            : 'Общий список всех администраторов системы'
+                        }
                     </p>
                 </div>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -209,7 +220,7 @@ export default function AdminUsers() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {users.map((user) => (
+                        {displayedUsers.map((user) => (
                             <TableRow key={user.id}>
                                 <TableCell>
                                     <div className="flex flex-col">
@@ -238,7 +249,7 @@ export default function AdminUsers() {
                                 </TableCell>
                             </TableRow>
                         ))}
-                        {users.length === 0 && (
+                        {displayedUsers.length === 0 && (
                             <TableRow>
                                 <TableCell colSpan={4} className="h-24 text-center">
                                     Пользователи не найдены.
