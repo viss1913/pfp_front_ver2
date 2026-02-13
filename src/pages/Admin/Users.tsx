@@ -23,13 +23,19 @@ export default function AdminUsers() {
         password: '',
         name: '',
         role: 'admin' as AdminUser['role'],
-        projectId: activeProject?.id.toString() || ''
+        projectId: ''
     })
 
-    // Update projectId if activeProject changes or when dialog opens
+    // Reset form and set default project when dialog opens
     useEffect(() => {
-        if (isDialogOpen && activeProject && !formData.projectId && formData.role !== 'super_admin') {
-            setFormData(prev => ({ ...prev, projectId: activeProject.id.toString() }));
+        if (isDialogOpen) {
+            setFormData({
+                email: '',
+                password: '',
+                name: '',
+                role: 'admin',
+                projectId: activeProject?.id.toString() || ''
+            });
         }
     }, [isDialogOpen, activeProject]);
 
@@ -153,19 +159,32 @@ export default function AdminUsers() {
                                 {formData.role !== 'super_admin' && (
                                     <div className="grid gap-2">
                                         <Label htmlFor="project">Проект</Label>
-                                        <Select
-                                            value={formData.projectId}
-                                            onValueChange={(value) => setFormData({ ...formData, projectId: value })}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Выберите проект" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {projects.map(p => (
-                                                    <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                        {activeProject ? (
+                                            <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-2 text-sm">
+                                                <Building2 className="h-4 w-4 text-muted-foreground" />
+                                                <span className="font-medium">{activeProject.name}</span>
+                                                <Badge variant="outline" className="ml-auto text-[10px]">Текущий контекст</Badge>
+                                            </div>
+                                        ) : (
+                                            <Select
+                                                value={formData.projectId}
+                                                onValueChange={(value) => setFormData({ ...formData, projectId: value })}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Выберите проект" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {projects.map(p => (
+                                                        <SelectItem key={p.id} value={p.id.toString()}>{p.name}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+                                        {activeProject && (
+                                            <p className="text-[10px] text-muted-foreground">
+                                                Пользователь будет привязан к текущему активному проекту.
+                                            </p>
+                                        )}
                                     </div>
                                 )}
                             </div>
