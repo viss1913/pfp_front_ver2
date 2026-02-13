@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Plus, UserPlus, Mail, Shield, Building2 } from 'lucide-react'
+import { UserPlus, Mail, Shield, Building2 } from 'lucide-react'
 
 export default function AdminUsers() {
     const [users, setUsers] = useState<AdminUser[]>([])
