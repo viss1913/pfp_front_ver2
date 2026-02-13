@@ -45,6 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (e) {
         localStorage.removeItem('active_project')
         localStorage.removeItem('project_key')
+        localStorage.removeItem('project_id')
       }
     }
   }, [])
@@ -60,10 +61,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (project) {
       localStorage.setItem('active_project', JSON.stringify(project))
       localStorage.setItem('project_key', project.public_key)
+      localStorage.setItem('project_id', project.id.toString())
       setActiveProject(project)
     } else {
       localStorage.removeItem('active_project')
       localStorage.removeItem('project_key')
+      localStorage.removeItem('project_id')
       setActiveProject(null)
     }
   }
@@ -73,6 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('user')
     localStorage.removeItem('active_project')
     localStorage.removeItem('project_key')
+    localStorage.removeItem('project_id')
     setUser(null)
     setActiveProject(null)
   }

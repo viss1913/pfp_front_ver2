@@ -22,6 +22,11 @@ api.interceptors.request.use(
     if (projectKey) {
       config.headers['X-Project-Key'] = projectKey
     }
+
+    const projectId = localStorage.getItem('project_id')
+    if (projectId) {
+      config.headers['X-Project-ID'] = projectId
+    }
     return config
   },
   (error) => {
