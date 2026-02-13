@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { adminManagementAPI, AdminUser, Project } from '@/lib/api'
+import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -16,13 +17,21 @@ export default function AdminUsers() {
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [isCreating, setIsCreating] = useState(false)
 
+    const { activeProject } = useAuth()
     const [formData, setFormData] = useState({
         email: '',
         password: '',
         name: '',
         role: 'admin' as AdminUser['role'],
-        projectId: '' as string
+        projectId: activeProject?.id.toString() || ''
     })
+
+    // Update projectId if activeProject changes or when dialog opens
+    useEffect(() => {
+        if (isDialogOpen && activeProject && !formData.projectId && formData.role !== 'super_admin') {
+            setFormData(prev => ({ ...prev, projectId: activeProject.id.toString() }));
+        }
+    }, [isDialogOpen, activeProject]);
 
     useEffect(() => {
         loadData()
