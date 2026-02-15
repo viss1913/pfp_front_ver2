@@ -689,44 +689,59 @@ export interface BotInfo {
   created_at: string
 }
 
+export interface ConstructorClient {
+  id: number
+  external_id: string
+  name?: string
+  platform: string
+  last_activity: string
+  created_at: string
+}
+
 export const constructorAPI = {
   // CJM Templates
   listTemplates: async (): Promise<CJMTemplate[]> => {
-    const response = await api.get<CJMTemplate[]>('/admin/constructor/constructor_commands')
+    const response = await api.get<CJMTemplate[]>('/pfp/constructor/commands')
     return response.data
   },
   createTemplate: async (data: CJMTemplate): Promise<CJMTemplate> => {
-    const response = await api.post<CJMTemplate>('/admin/constructor/constructor_commands', data)
+    const response = await api.post<CJMTemplate>('/pfp/constructor/commands', data)
     return response.data
   },
   updateTemplate: async (id: number, data: Partial<CJMTemplate>): Promise<CJMTemplate> => {
-    const response = await api.put<CJMTemplate>(`/admin/constructor/constructor_commands/${id}`, data)
+    const response = await api.put<CJMTemplate>(`/pfp/constructor/commands/${id}`, data)
     return response.data
   },
   deleteTemplate: async (id: number): Promise<void> => {
-    await api.delete(`/admin/constructor/constructor_commands/${id}`)
+    await api.delete(`/pfp/constructor/commands/${id}`)
   },
 
   // Brain Contexts
   createBrainContext: async (data: BrainContext): Promise<BrainContext> => {
-    const response = await api.post<BrainContext>('/admin/constructor/constructor_brain_contexts', data)
+    const response = await api.post<BrainContext>('/pfp/constructor/brain-contexts', data)
     return response.data
   },
   listBrainContexts: async (): Promise<BrainContext[]> => {
-    const response = await api.get<BrainContext[]>('/admin/constructor/constructor_brain_contexts')
+    const response = await api.get<BrainContext[]>('/pfp/constructor/brain-contexts')
     return response.data
   },
   updateBrainContext: async (id: number, data: Partial<BrainContext>): Promise<BrainContext> => {
-    const response = await api.put<BrainContext>(`/admin/constructor/constructor_brain_contexts/${id}`, data)
+    const response = await api.put<BrainContext>(`/pfp/constructor/brain-contexts/${id}`, data)
     return response.data
   },
   deleteBrainContext: async (id: number): Promise<void> => {
-    await api.delete(`/admin/constructor/constructor_brain_contexts/${id}`)
+    await api.delete(`/pfp/constructor/brain-contexts/${id}`)
   },
 
   // Bots
   listBots: async (): Promise<BotInfo[]> => {
-    const response = await api.get<BotInfo[]>('/admin/constructor/constructor_bots')
+    const response = await api.get<BotInfo[]>('/pfp/constructor/bots')
+    return response.data
+  },
+
+  // Clients
+  listClients: async (): Promise<ConstructorClient[]> => {
+    const response = await api.get<ConstructorClient[]>('/pfp/constructor/clients')
     return response.data
   },
 }
