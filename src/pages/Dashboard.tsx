@@ -1,5 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Package, Briefcase, Settings, Users, Bot } from 'lucide-react'
+import { Package, Briefcase, Settings, Users, Bot, Globe } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 
@@ -14,6 +14,25 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Globe className="h-5 w-5" />
+              AI B2C Site
+            </CardTitle>
+            <CardDescription>
+              Управление контекстами ИИ-ассистента для B2C
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link to="/ai-b2c">
+              <Button variant="outline" className="w-full">
+                Перейти к AI B2C
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

@@ -12,6 +12,9 @@ import Constructor from './pages/Constructor'
 import BrainContexts from './pages/Constructor/BrainContexts'
 import CJMTemplates from './pages/Constructor/CJMTemplates'
 import BotSessions from './pages/Constructor/BotSessions'
+import AiB2c from './pages/AiB2c'
+import B2cBrainContexts from './pages/AiB2c/B2cBrainContexts'
+import B2cStageContexts from './pages/AiB2c/B2cStageContexts'
 import HomeOwners from './pages/Insurance/HomeOwners'
 import Layout from './components/Layout'
 import SuperAdminDashboard from './pages/Admin/SuperAdminDashboard'
@@ -52,6 +55,10 @@ function AppRoutes() {
         <Route path="ai-assistants" element={<AiAssistants />} />
         <Route path="agents" element={<Agents />} />
         <Route path="clients" element={<Clients />} />
+        <Route path="ai-b2c" element={<AiB2c />}>
+          <Route path="brain" element={<B2cBrainContexts />} />
+          <Route path="stages" element={<B2cStageContexts />} />
+        </Route>
         <Route path="constructor" element={<Constructor />}>
           <Route path="brain" element={<BrainContexts />} />
           <Route path="cjm" element={<CJMTemplates />} />

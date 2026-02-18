@@ -746,6 +746,76 @@ export const constructorAPI = {
   },
 }
 
+// --- AI B2C Site API ---
+
+export interface B2cBrainContext {
+  id?: number
+  project_id?: number
+  title: string
+  content: string
+  is_active: boolean
+  priority: number
+  created_at?: string
+  updated_at?: string
+}
+
+export interface B2cStageContext {
+  id?: number
+  project_id?: number
+  stage_key: string
+  title: string
+  content: string
+  is_active: boolean
+  priority: number
+  created_at?: string
+  updated_at?: string
+}
+
+export const STAGE_KEY_OPTIONS = [
+  { value: 'PFP1', label: 'Главная / Начало' },
+  { value: 'chooseTarget', label: 'Выбор целей' },
+  { value: 'riskProfile', label: 'Риск-профилирование' },
+  { value: 'financialReserve', label: 'Финансовый резерв' },
+  { value: 'assets', label: 'Активы и пассивы' },
+  { value: 'result', label: 'Результат / Финплан' },
+] as const
+
+export const aiB2cAPI = {
+  // Brain Contexts
+  listBrainContexts: async (): Promise<B2cBrainContext[]> => {
+    const response = await api.get<B2cBrainContext[]>('/admin/ai-b2c/brain-contexts')
+    return response.data
+  },
+  createBrainContext: async (data: Partial<B2cBrainContext>): Promise<B2cBrainContext> => {
+    const response = await api.post<B2cBrainContext>('/admin/ai-b2c/brain-contexts', data)
+    return response.data
+  },
+  updateBrainContext: async (id: number, data: Partial<B2cBrainContext>): Promise<B2cBrainContext> => {
+    const response = await api.put<B2cBrainContext>(`/admin/ai-b2c/brain-contexts/${id}`, data)
+    return response.data
+  },
+  deleteBrainContext: async (id: number): Promise<void> => {
+    await api.delete(`/admin/ai-b2c/brain-contexts/${id}`)
+  },
+
+  // Stage Contexts
+  listStages: async (): Promise<B2cStageContext[]> => {
+    const response = await api.get<B2cStageContext[]>('/admin/ai-b2c/stages')
+    return response.data
+  },
+  createStage: async (data: Partial<B2cStageContext>): Promise<B2cStageContext> => {
+    const response = await api.post<B2cStageContext>('/admin/ai-b2c/stages', data)
+    return response.data
+  },
+  updateStage: async (id: number, data: Partial<B2cStageContext>): Promise<B2cStageContext> => {
+    const response = await api.put<B2cStageContext>(`/admin/ai-b2c/stages/${id}`, data)
+    return response.data
+  },
+  deleteStage: async (id: number): Promise<void> => {
+    await api.delete(`/admin/ai-b2c/stages/${id}`)
+  },
+}
+
 export const homeOwnersAPI = {
   // Products
   listProducts: async (): Promise<HomeOwnersProduct[]> => {

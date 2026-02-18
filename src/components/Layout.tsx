@@ -45,6 +45,7 @@ export default function Layout() {
     { name: 'Страхование Имущества', href: '/insurance/home-owners', icon: Package },
     { name: 'AI Ассистенты', href: '/ai-assistants', icon: Bot },
     { name: 'Агенты', href: '/agents', icon: Users },
+    { name: 'AI B2C Site', href: '/ai-b2c', icon: Globe },
     { name: 'Конструктор бота', href: '/constructor', icon: Bot },
     { name: 'Настройки', href: '/settings', icon: Settings },
   ]
