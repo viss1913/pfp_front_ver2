@@ -771,15 +771,6 @@ export interface B2cStageContext {
   updated_at?: string
 }
 
-export const STAGE_KEY_OPTIONS = [
-  { value: 'PFP1', label: 'Главная / Начало' },
-  { value: 'chooseTarget', label: 'Выбор целей' },
-  { value: 'riskProfile', label: 'Риск-профилирование' },
-  { value: 'financialReserve', label: 'Финансовый резерв' },
-  { value: 'assets', label: 'Активы и пассивы' },
-  { value: 'result', label: 'Результат / Финплан' },
-] as const
-
 export const aiB2cAPI = {
   // Brain Contexts
   listBrainContexts: async (): Promise<B2cBrainContext[]> => {

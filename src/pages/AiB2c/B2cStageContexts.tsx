@@ -7,7 +7,7 @@ import { useState, useEffect, ChangeEvent } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { aiB2cAPI, B2cStageContext, STAGE_KEY_OPTIONS } from '@/lib/api'
+import { aiB2cAPI, B2cStageContext } from '@/lib/api'
 
 export default function B2cStageContexts() {
     const [stages, setStages] = useState<B2cStageContext[]>([])
@@ -101,14 +101,6 @@ export default function B2cStageContexts() {
         }
     }
 
-    const getStageLabel = (key: string) => {
-        const option = STAGE_KEY_OPTIONS.find(o => o.value === key)
-        return option ? option.label : key
-    }
-
-    // Вычисляем, какие stage_key уже заняты
-    const usedStageKeys = stages.map(s => s.stage_key)
-
     return (
         <div className="space-y-4">
             <div className="flex justify-between items-center">
@@ -130,30 +122,11 @@ export default function B2cStageContexts() {
                         <div className="space-y-4 py-4">
                             <div className="space-y-2">
                                 <Label>Ключ этапа (stage_key)</Label>
-                                <select
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                <Input
                                     value={newStage.stage_key}
-                                    onChange={(e) => {
-                                        const key = e.target.value
-                                        const option = STAGE_KEY_OPTIONS.find(o => o.value === key)
-                                        setNewStage({
-                                            ...newStage,
-                                            stage_key: key,
-                                            title: option ? option.label : newStage.title || '',
-                                        })
-                                    }}
-                                >
-                                    <option value="">Выберите этап...</option>
-                                    {STAGE_KEY_OPTIONS.map(opt => (
-                                        <option
-                                            key={opt.value}
-                                            value={opt.value}
-                                            disabled={usedStageKeys.includes(opt.value)}
-                                        >
-                                            {opt.value} — {opt.label} {usedStageKeys.includes(opt.value) ? '(уже создан)' : ''}
-                                        </option>
-                                    ))}
-                                </select>
+                                    onChange={(e: ChangeEvent<HTMLInputElement>) => setNewStage({ ...newStage, stage_key: e.target.value })}
+                                    placeholder="Например: AI_B2C_site"
+                                />
                             </div>
                             <div className="space-y-2">
                                 <Label>Название</Label>
@@ -208,7 +181,7 @@ export default function B2cStageContexts() {
                                             {stage.title}
                                         </CardTitle>
                                         <CardDescription>
-                                            {getStageLabel(stage.stage_key)} · Приоритет: {stage.priority}
+                                            Приоритет: {stage.priority}
                                         </CardDescription>
                                     </div>
                                     <div className="flex items-center gap-4">
