@@ -297,7 +297,8 @@ export interface PdsCofinIncomeBracketUpdate {
 
 export interface HomeOwnersProduct {
   id?: number
-  project_id?: number
+  /** null — общий для всех проектов; число — привязка к проекту */
+  project_id?: number | null
   name: string
   description?: string
   is_active: boolean
@@ -810,18 +811,11 @@ export const aiB2cAPI = {
 export const homeOwnersAPI = {
   // Products
   listProducts: async (): Promise<HomeOwnersProduct[]> => {
-    // Try specialized admin endpoint first, fallback to general products if needed
+    // Контракт: { success: true, data: [...] }, в каждом продукте project_id (number | null)
     try {
-      const response = await api.get<any>('/admin/insurance/home-owners/products')
-      // Handle { success: true, data: [...] } or direct array
-      if (response.data && response.data.success && Array.isArray(response.data.data)) {
+      const response = await api.get<{ success: boolean; data: HomeOwnersProduct[] }>('/admin/insurance/home-owners/products')
+      if (response.data?.success === true && Array.isArray(response.data.data)) {
         return response.data.data
-      }
-      if (response.data && response.data.success && Array.isArray(response.data.products)) {
-        return response.data.products
-      }
-      if (Array.isArray(response.data)) {
-        return response.data
       }
       return []
     } catch (e) {

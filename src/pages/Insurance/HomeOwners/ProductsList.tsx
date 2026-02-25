@@ -26,8 +26,9 @@ export default function ProductsList() {
         try {
             setLoading(true)
             const data = await homeOwnersAPI.listProducts()
+            // Если у продукта нет project_id — показываем при любом выборе проекта; иначе фильтруем
             const filtered = activeProject
-                ? data.filter(p => p.project_id === activeProject.id)
+                ? data.filter(p => p.project_id == null || p.project_id === activeProject.id)
                 : data
             setProducts(filtered)
         } catch (error) {
