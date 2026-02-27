@@ -447,7 +447,10 @@ export const portfoliosAPI = {
 
 export const settingsAPI = {
   list: async (params?: { category?: string }): Promise<SystemSetting[]> => {
-    const response = await api.get<SystemSetting[]>('/pfp/settings', { params })
+    const response = await api.get<SystemSetting[]>('/pfp/settings', {
+      // Добавляем параметр, чтобы обходить кеш браузера/прокси
+      params: { ...params, _ts: Date.now() },
+    })
     return response.data
   },
   get: async (key: string): Promise<SystemSetting> => {
