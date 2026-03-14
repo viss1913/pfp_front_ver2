@@ -10,13 +10,18 @@ import {
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { pfpAPI, PfpCalculation } from '@/lib/api'
+import { pfpAPI, PfpCalculation, PfpClientItem } from '@/lib/api'
+import { useAuth } from '@/contexts/AuthContext'
 import { Search, CheckCircle2, Circle, ChevronLeft, ChevronRight } from 'lucide-react'
 import { format } from 'date-fns'
 import { ru } from 'date-fns/locale'
 
 export default function Clients() {
+    const { user } = useAuth()
+    const isAgent = user?.role === 'agent'
+
     const [calculations, setCalculations] = useState<PfpCalculation[]>([])
+    const [agentClients, setAgentClients] = useState<PfpClientItem[]>([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState('')
     const [page, setPage] = useState(1)
@@ -40,12 +45,33 @@ export default function Clients() {
         }
     }
 
+    const fetchAgentClients = async () => {
+        try {
+            setLoading(true)
+            const response = await pfpAPI.getClients({
+                page,
+                limit,
+                search,
+            })
+            setAgentClients(response.data)
+            setTotalPages(response.pagination.totalPages)
+        } catch (error) {
+            console.error('Error fetching clients:', error)
+        } finally {
+            setLoading(false)
+        }
+    }
+
     useEffect(() => {
         const timer = setTimeout(() => {
-            fetchCalculations()
+            if (isAgent) {
+                fetchAgentClients()
+            } else {
+                fetchCalculations()
+            }
         }, 500)
         return () => clearTimeout(timer)
-    }, [page, search])
+    }, [page, search, isAgent])
 
     const getStatusBadge = (status: PfpCalculation['status']) => {
         const statusMap = {
@@ -55,6 +81,21 @@ export default function Clients() {
         }
         const { label, color } = statusMap[status] || { label: status, color: 'bg-gray-100 text-gray-800' }
         return <Badge variant="outline" className={color}>{label}</Badge>
+    }
+
+    const getClientDisplayName = (c: PfpClientItem) => {
+        const parts = [c.first_name, c.last_name].filter(Boolean) as string[]
+        return parts.length ? parts.join(' ') : `#${c.id}`
+    }
+
+    const renderOwnerLabel = (ownerLabel?: string) => {
+        if (!ownerLabel) return null
+        const isB2C = ownerLabel.toUpperCase() === 'B2C'
+        return (
+            <Badge variant="outline" className={isB2C ? 'bg-muted text-muted-foreground' : ''}>
+                {isB2C ? 'B2C' : `Агент: ${ownerLabel}`}
+            </Badge>
+        )
     }
 
     return (
@@ -85,22 +126,52 @@ export default function Clients() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead className="w-[80px]">ID</TableHead>
-                            <TableHead>Клиент</TableHead>
-                            <TableHead>Агент</TableHead>
-                            <TableHead>Email агента</TableHead>
-                            <TableHead>Статус</TableHead>
-                            <TableHead className="text-center">Расчет</TableHead>
-                            <TableHead>Дата создания</TableHead>
+                            {isAgent ? (
+                                <>
+                                    <TableHead className="w-[80px]">ID</TableHead>
+                                    <TableHead>Клиент</TableHead>
+                                    <TableHead>Владелец</TableHead>
+                                </>
+                            ) : (
+                                <>
+                                    <TableHead className="w-[80px]">ID</TableHead>
+                                    <TableHead>Клиент</TableHead>
+                                    <TableHead>Агент</TableHead>
+                                    <TableHead>Email агента</TableHead>
+                                    <TableHead>Статус</TableHead>
+                                    <TableHead className="text-center">Расчет</TableHead>
+                                    <TableHead>Дата создания</TableHead>
+                                </>
+                            )}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {loading ? (
                             <TableRow>
-                                <TableCell colSpan={7} className="h-24 text-center">
+                                <TableCell colSpan={isAgent ? 3 : 7} className="h-24 text-center">
                                     Загрузка...
                                 </TableCell>
                             </TableRow>
+                        ) : isAgent ? (
+                            agentClients.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={3} className="h-24 text-center">
+                                        Клиенты не найдены
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                agentClients.map((client) => (
+                                    <TableRow
+                                        key={client.id}
+                                        className="cursor-pointer hover:bg-muted/50"
+                                        onClick={() => window.open(`/clients/${client.id}`, '_blank')}
+                                    >
+                                        <TableCell className="font-medium">#{client.id}</TableCell>
+                                        <TableCell>{getClientDisplayName(client)}</TableCell>
+                                        <TableCell>{renderOwnerLabel(client.owner_label)}</TableCell>
+                                    </TableRow>
+                                ))
+                            )
                         ) : calculations.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={7} className="h-24 text-center">

@@ -4,10 +4,11 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Plus, LayoutGrid, CheckCircle2, Shield } from 'lucide-react'
+import { Plus, LayoutGrid, CheckCircle2, Shield, Settings } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 
 export default function SuperAdminDashboard() {
     const [projects, setProjects] = useState<Project[]>([])
@@ -15,6 +16,10 @@ export default function SuperAdminDashboard() {
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [newProjectName, setNewProjectName] = useState('')
     const [isCreating, setIsCreating] = useState(false)
+    const [editProject, setEditProject] = useState<Project | null>(null)
+    const [editDialogOpen, setEditDialogOpen] = useState(false)
+    const [agentsSeeAllClients, setAgentsSeeAllClients] = useState(false)
+    const [isSavingProject, setIsSavingProject] = useState(false)
 
     const { selectProject, activeProject } = useAuth()
     const navigate = useNavigate()
@@ -53,6 +58,36 @@ export default function SuperAdminDashboard() {
     const handleSelectProject = (project: Project) => {
         selectProject(project)
         navigate('/')
+    }
+
+    const openEditProject = async (e: React.MouseEvent, project: Project) => {
+        e.stopPropagation()
+        try {
+            const full = await adminManagementAPI.getProject(project.id)
+            setEditProject(full)
+            setAgentsSeeAllClients(Boolean(full.settings?.agents_see_all_clients))
+            setEditDialogOpen(true)
+        } catch (err) {
+            console.error('Failed to load project', err)
+        }
+    }
+
+    const handleSaveProjectSettings = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!editProject) return
+        setIsSavingProject(true)
+        try {
+            await adminManagementAPI.updateProject(editProject.id, {
+                settings: { agents_see_all_clients: agentsSeeAllClients },
+            })
+            setEditDialogOpen(false)
+            setEditProject(null)
+            loadProjects()
+        } catch (err) {
+            console.error('Failed to update project', err)
+        } finally {
+            setIsSavingProject(false)
+        }
     }
 
     if (loading) {
@@ -116,7 +151,19 @@ export default function SuperAdminDashboard() {
                             <CardTitle className="text-sm font-medium">
                                 {project.name}
                             </CardTitle>
-                            <Shield className={`h-4 w-4 ${project.status === 'active' ? 'text-green-500' : 'text-muted-foreground'}`} />
+                            <div className="flex items-center gap-1">
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={(e) => openEditProject(e, project)}
+                                    title="Настройки проекта"
+                                >
+                                    <Settings className="h-4 w-4" />
+                                </Button>
+                                <Shield className={`h-4 w-4 ${project.status === 'active' ? 'text-green-500' : 'text-muted-foreground'}`} />
+                            </div>
                         </CardHeader>
                         <CardContent>
                             <div className="text-xs text-muted-foreground mb-4">
@@ -144,6 +191,51 @@ export default function SuperAdminDashboard() {
                     </Card>
                 ))}
             </div>
+
+            <Dialog open={editDialogOpen} onOpenChange={(open) => { setEditDialogOpen(open); if (!open) setEditProject(null) }}>
+                <DialogContent className="sm:max-w-md" onClick={(e) => e.stopPropagation()}>
+                    <form onSubmit={handleSaveProjectSettings}>
+                        <DialogHeader>
+                            <DialogTitle>Настройки проекта</DialogTitle>
+                            <DialogDescription>
+                                {editProject?.name && (
+                                    <span className="font-medium text-foreground">{editProject.name}</span>
+                                )}
+                                {' — видимость клиентов для агентов.'}
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="flex items-center justify-between space-x-2 rounded-lg border p-4">
+                                <div className="space-y-0.5">
+                                    <Label htmlFor="agents-see-all" className="text-base">
+                                        Все агенты видят всех клиентов проекта
+                                    </Label>
+                                    <p className="text-sm text-muted-foreground">
+                                        Включено: у агентов в списке клиентов отображаются все клиенты проекта с пометкой B2C или агент-владелец. Выключено: каждый агент видит только своих клиентов.
+                                    </p>
+                                </div>
+                                <Switch
+                                    id="agents-see-all"
+                                    checked={agentsSeeAllClients}
+                                    onCheckedChange={setAgentsSeeAllClients}
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setEditDialogOpen(false)}
+                            >
+                                Отмена
+                            </Button>
+                            <Button type="submit" disabled={isSavingProject}>
+                                {isSavingProject ? 'Сохранение...' : 'Сохранить'}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

@@ -883,6 +883,24 @@ export interface PfpCalculationResponse {
   }
 }
 
+/** Элемент списка клиентов агента (GET /pfp/clients). owner_label приходит при agents_see_all_clients. */
+export interface PfpClientItem {
+  id: number
+  owner_label?: string
+  first_name?: string
+  last_name?: string
+  [key: string]: unknown
+}
+export interface PfpClientsResponse {
+  data: PfpClientItem[]
+  pagination: {
+    total: number
+    page: number
+    limit: number
+    totalPages: number
+  }
+}
+
 export const pfpAPI = {
   listCalculations: async (params?: {
     page?: number
@@ -894,9 +912,24 @@ export const pfpAPI = {
     const response = await api.get<PfpCalculationResponse>('/admin/pfp/calculations', { params })
     return response.data
   },
+  /** Список клиентов агента (или всех клиентов проекта при agents_see_all_clients). */
+  getClients: async (params?: {
+    page?: number
+    limit?: number
+    search?: string
+    sort?: string
+    order?: 'asc' | 'desc'
+  }): Promise<PfpClientsResponse> => {
+    const response = await api.get<PfpClientsResponse>('/pfp/clients', { params })
+    return response.data
+  },
 }
 
 // --- Admin Management API (Super Admin) ---
+
+export interface ProjectSettings {
+  agents_see_all_clients?: boolean
+}
 
 export interface Project {
   id: number
@@ -904,7 +937,7 @@ export interface Project {
   slug: string
   public_key: string
   status: 'active' | 'suspended'
-  settings: Record<string, any>
+  settings?: ProjectSettings
   created_at: string
   updated_at: string
 }
@@ -925,11 +958,15 @@ export const adminManagementAPI = {
     const response = await api.get<Project[]>('/admin/projects')
     return response.data
   },
-  createProject: async (data: { name: string; slug?: string; settings?: any }): Promise<Project> => {
+  getProject: async (id: number): Promise<Project> => {
+    const response = await api.get<Project>(`/admin/projects/${id}`)
+    return response.data
+  },
+  createProject: async (data: { name: string; slug?: string; settings?: ProjectSettings }): Promise<Project> => {
     const response = await api.post<Project>('/admin/projects', data)
     return response.data
   },
-  updateProject: async (id: number, data: Partial<Project>): Promise<Project> => {
+  updateProject: async (id: number, data: { name?: string; status?: string; settings?: ProjectSettings }): Promise<Project> => {
     const response = await api.put<Project>(`/admin/projects/${id}`, data)
     return response.data
   },
