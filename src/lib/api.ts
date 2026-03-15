@@ -223,6 +223,18 @@ export interface SystemSetting {
   updated_at?: string
 }
 
+/** Один диапазон месяцев с единой годовой ставкой инфляции (ключ inflation_rate_matrix) */
+export interface InflationRateRange {
+  fromMonth: number
+  toMonthExcl: number
+  rateAnnual: number
+}
+
+/** Матрица инфляции по месяцам горизонта (value для ключа inflation_rate_matrix) */
+export interface InflationRateMatrix {
+  ranges: InflationRateRange[]
+}
+
 export interface Tax2ndflBracket {
   id: number
   income_from: number

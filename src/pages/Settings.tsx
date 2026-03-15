@@ -26,6 +26,7 @@ import { Edit } from 'lucide-react'
 import TaxBrackets from '@/components/TaxBrackets'
 import PdsCofinancing from '@/components/PdsCofinancing'
 import PassiveIncomeYieldSettings from '@/components/PassiveIncomeYieldSettings'
+import InflationSettings from '@/components/InflationSettings'
 
 export default function Settings() {
   const { user } = useAuth()
@@ -110,6 +111,7 @@ export default function Settings() {
       <Tabs defaultValue="system" className="space-y-4">
         <TabsList>
           <TabsTrigger value="system">Системные настройки</TabsTrigger>
+          <TabsTrigger value="inflation">Инфляция и расходы</TabsTrigger>
           <TabsTrigger value="tax">Налоги 2НДФЛ</TabsTrigger>
           <TabsTrigger value="pds">ПДС</TabsTrigger>
           <TabsTrigger value="passive">Пассивный доход — доходности</TabsTrigger>
@@ -156,6 +158,10 @@ export default function Settings() {
               </Table>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="inflation" className="space-y-4">
+          <InflationSettings isAdmin={isAdmin} />
         </TabsContent>
 
         <TabsContent value="tax" className="space-y-4">
