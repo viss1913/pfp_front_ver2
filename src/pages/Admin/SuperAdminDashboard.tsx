@@ -20,9 +20,9 @@ export default function SuperAdminDashboard() {
     const [editDialogOpen, setEditDialogOpen] = useState(false)
     const [agentsSeeAllClients, setAgentsSeeAllClients] = useState(false)
     const [isSavingProject, setIsSavingProject] = useState(false)
-    const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null)
+    const [copiedKeyId, setCopiedKeyId] = useState<number | null>(null)
 
-    const copyProjectKey = async (e: React.MouseEvent, key: string, projectId: string) => {
+    const copyProjectKey = async (e: React.MouseEvent, key: string, projectId: number) => {
         e.stopPropagation()
         try {
             await navigator.clipboard.writeText(key)
@@ -202,7 +202,7 @@ export default function SuperAdminDashboard() {
                                     variant="ghost"
                                     size="icon"
                                     className="h-7 w-7 shrink-0"
-                                    onClick={(e) => copyProjectKey(e, project.public_key ?? '', project.id)}
+                                    onClick={(e) => copyProjectKey(e, project.public_key, project.id)}
                                     title="Скопировать ключ"
                                 >
                                     {copiedKeyId === project.id ? (
