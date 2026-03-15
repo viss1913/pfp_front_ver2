@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Plus, LayoutGrid, CheckCircle2, Shield, Settings } from 'lucide-react'
+import { Plus, LayoutGrid, CheckCircle2, Shield, Settings, Copy, Check } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -20,6 +20,26 @@ export default function SuperAdminDashboard() {
     const [editDialogOpen, setEditDialogOpen] = useState(false)
     const [agentsSeeAllClients, setAgentsSeeAllClients] = useState(false)
     const [isSavingProject, setIsSavingProject] = useState(false)
+    const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null)
+
+    const copyProjectKey = async (e: React.MouseEvent, key: string, projectId: string) => {
+        e.stopPropagation()
+        try {
+            await navigator.clipboard.writeText(key)
+            setCopiedKeyId(projectId)
+            setTimeout(() => setCopiedKeyId(null), 2000)
+        } catch {
+            // fallback для старых браузеров
+            const ta = document.createElement('textarea')
+            ta.value = key
+            document.body.appendChild(ta)
+            ta.select()
+            document.execCommand('copy')
+            document.body.removeChild(ta)
+            setCopiedKeyId(projectId)
+            setTimeout(() => setCopiedKeyId(null), 2000)
+        }
+    }
 
     const { selectProject, activeProject } = useAuth()
     const navigate = useNavigate()
@@ -169,11 +189,28 @@ export default function SuperAdminDashboard() {
                             <div className="text-xs text-muted-foreground mb-4">
                                 Slug: {project.slug}
                             </div>
-                            <div className="flex items-center gap-2">
-                                <LayoutGrid className="h-4 w-4 text-muted-foreground" />
-                                <span className="text-xs font-mono bg-muted px-2 py-1 rounded truncate">
+                            <div
+                                className="flex items-center gap-2"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <LayoutGrid className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                <span className="text-xs font-mono bg-muted px-2 py-1 rounded truncate select-all" title={project.public_key}>
                                     {project.public_key}
                                 </span>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 shrink-0"
+                                    onClick={(e) => copyProjectKey(e, project.public_key ?? '', project.id)}
+                                    title="Скопировать ключ"
+                                >
+                                    {copiedKeyId === project.id ? (
+                                        <Check className="h-3.5 w-3.5 text-green-500" />
+                                    ) : (
+                                        <Copy className="h-3.5 w-3.5" />
+                                    )}
+                                </Button>
                             </div>
                         </CardContent>
                         <CardFooter>
