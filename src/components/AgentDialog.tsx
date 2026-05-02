@@ -10,7 +10,67 @@ import {
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
-import { Agent, AgentCreate, agentsAPI } from '@/lib/api'
+import {
+    Agent,
+    AgentCreate,
+    AgentGender,
+    AgentUpdate,
+    agentsAPI,
+} from '@/lib/api'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select'
+
+const SIGNATURE_MAX_BYTES = 8 * 1024 * 1024
+const GENDER_NONE = '__none__'
+
+function buildAgentPayload(formData: Record<string, unknown>, isEdit: boolean): AgentCreate | AgentUpdate {
+    const keys = [
+        'first_name',
+        'last_name',
+        'middle_name',
+        'email',
+        'password',
+        'phone',
+        'telegram_bot',
+        'telegram_channel',
+        'telegram_channel_id',
+        'is_active',
+        'region',
+        'city',
+        'position_title',
+        'specialization',
+        'experience_years',
+        'passport_series',
+        'passport_number',
+        'birth_date',
+        'gender',
+        'signature_image_url',
+    ] as const
+
+    const out: Record<string, unknown> = {}
+    for (const k of keys) {
+        const v = formData[k]
+        if (v === undefined) continue
+        if (typeof v === 'string' && v.trim() === '' && k !== 'password') {
+            continue
+        }
+        if (k === 'gender' && (v === '' || v === GENDER_NONE)) {
+            continue
+        }
+        out[k] = v
+    }
+
+    if (isEdit && (!out.password || String(out.password).trim() === '')) {
+        delete out.password
+    }
+
+    return out as AgentCreate | AgentUpdate
+}
 
 interface AgentDialogProps {
     open: boolean
@@ -26,8 +86,9 @@ export function AgentDialog({
     onSuccess,
 }: AgentDialogProps) {
     const [loading, setLoading] = useState(false)
+    const [signatureUploading, setSignatureUploading] = useState(false)
     const [error, setError] = useState<string | null>(null)
-    const [formData, setFormData] = useState<any>({
+    const [formData, setFormData] = useState({
         first_name: '',
         last_name: '',
         middle_name: '',
@@ -43,6 +104,11 @@ export function AgentDialog({
         position_title: '',
         specialization: '',
         experience_years: 0,
+        passport_series: '',
+        passport_number: '',
+        birth_date: '',
+        gender: '' as '' | AgentGender,
+        signature_image_url: '',
     })
 
     useEffect(() => {
@@ -53,7 +119,7 @@ export function AgentDialog({
                     last_name: agent.last_name || '',
                     middle_name: agent.middle_name || '',
                     email: agent.email || '',
-                    password: '', // Password might be required by backend even for patch?
+                    password: '',
                     phone: agent.phone || '',
                     telegram_bot: agent.telegram_bot || '',
                     telegram_channel: agent.telegram_channel || '',
@@ -64,6 +130,11 @@ export function AgentDialog({
                     position_title: agent.position_title || '',
                     specialization: agent.specialization || '',
                     experience_years: agent.experience_years || 0,
+                    passport_series: agent.passport_series || '',
+                    passport_number: agent.passport_number || '',
+                    birth_date: agent.birth_date || '',
+                    gender: (agent.gender as AgentGender | undefined) || '',
+                    signature_image_url: agent.signature_image_url || '',
                 })
             } else {
                 setFormData({
@@ -82,6 +153,11 @@ export function AgentDialog({
                     position_title: '',
                     specialization: '',
                     experience_years: 0,
+                    passport_series: '',
+                    passport_number: '',
+                    birth_date: '',
+                    gender: '',
+                    signature_image_url: '',
                 })
             }
             setError(null)
@@ -94,13 +170,15 @@ export function AgentDialog({
         setError(null)
 
         try {
-            const dataToSubmit = { ...formData }
             if (agent) {
-                // If editing and password is empty, maybe we shouldn't send it?
-                // But the user said "при редактировании обязательно нужно передавать email и password"
-                await agentsAPI.update(agent.id, dataToSubmit)
+                await agentsAPI.update(
+                    agent.id,
+                    buildAgentPayload(formData as unknown as Record<string, unknown>, true) as AgentUpdate
+                )
             } else {
-                await agentsAPI.create(dataToSubmit as AgentCreate)
+                await agentsAPI.create(
+                    buildAgentPayload(formData as unknown as Record<string, unknown>, false) as AgentCreate
+                )
             }
             onSuccess()
             onOpenChange(false)
@@ -114,8 +192,45 @@ export function AgentDialog({
         }
     }
 
-    const handleChange = (field: string, value: any) => {
-        setFormData((prev: any) => ({ ...prev, [field]: value }))
+    const handleChange = <K extends keyof typeof formData>(field: K, value: (typeof formData)[K]) => {
+        setFormData((prev) => ({ ...prev, [field]: value }))
+    }
+
+    const handleSignatureFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        e.target.value = ''
+        if (!file || !agent) return
+
+        const okType =
+            file.type === 'image/jpeg' ||
+            file.type === 'image/png' ||
+            file.type === 'image/webp'
+        if (!okType) {
+            setError('Подпись: только JPEG, PNG или WebP')
+            return
+        }
+        if (file.size > SIGNATURE_MAX_BYTES) {
+            setError('Файл подписи не больше 8 МБ')
+            return
+        }
+
+        setSignatureUploading(true)
+        setError(null)
+        try {
+            const res = await agentsAPI.uploadSignature(agent.id, file)
+            const url = res.signature_image_url || res.url
+            setFormData((prev) => ({
+                ...prev,
+                signature_image_url: url,
+            }))
+            onSuccess()
+        } catch (err: unknown) {
+            console.error(err)
+            const ax = err as { response?: { data?: { message?: string } }; message?: string }
+            setError(ax.response?.data?.message || ax.message || 'Не удалось загрузить подпись')
+        } finally {
+            setSignatureUploading(false)
+        }
     }
 
     return (
@@ -206,6 +321,98 @@ export function AgentDialog({
                                 <Label htmlFor="is_active">Активен (может входить в систему)</Label>
                             </div>
                         </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <h3 className="text-sm font-medium border-b pb-2">Паспорт и подпись</h3>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="passport_series">Серия паспорта</Label>
+                                <Input
+                                    id="passport_series"
+                                    value={formData.passport_series}
+                                    onChange={(e) => handleChange('passport_series', e.target.value)}
+                                    placeholder="Необязательно"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="passport_number">Номер паспорта</Label>
+                                <Input
+                                    id="passport_number"
+                                    value={formData.passport_number}
+                                    onChange={(e) => handleChange('passport_number', e.target.value)}
+                                    placeholder="Необязательно"
+                                />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="birth_date">Дата рождения</Label>
+                                <Input
+                                    id="birth_date"
+                                    type="date"
+                                    value={formData.birth_date}
+                                    onChange={(e) => handleChange('birth_date', e.target.value)}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="gender">Пол</Label>
+                                <Select
+                                    value={formData.gender || GENDER_NONE}
+                                    onValueChange={(v) =>
+                                        handleChange('gender', v === GENDER_NONE ? '' : (v as AgentGender))
+                                    }
+                                >
+                                    <SelectTrigger id="gender">
+                                        <SelectValue placeholder="Не указано" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value={GENDER_NONE}>Не указано</SelectItem>
+                                        <SelectItem value="male">Мужской</SelectItem>
+                                        <SelectItem value="female">Женский</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="signature_image_url">URL изображения подписи</Label>
+                            <Input
+                                id="signature_image_url"
+                                type="url"
+                                value={formData.signature_image_url}
+                                onChange={(e) => handleChange('signature_image_url', e.target.value)}
+                                placeholder="https://… или загрузите файл ниже (после сохранения агента)"
+                            />
+                            {formData.signature_image_url ? (
+                                <div className="mt-2 rounded-md border p-2 inline-block max-w-full">
+                                    <img
+                                        src={formData.signature_image_url}
+                                        alt="Подпись"
+                                        className="max-h-24 max-w-full object-contain"
+                                    />
+                                </div>
+                            ) : null}
+                        </div>
+                        {agent ? (
+                            <div className="space-y-2">
+                                <Label htmlFor="signature_file">Загрузить файл подписи</Label>
+                                <Input
+                                    id="signature_file"
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp"
+                                    disabled={signatureUploading || loading}
+                                    onChange={handleSignatureFile}
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    JPEG, PNG или WebP, до 8 МБ. Сохраняется на сервере, в профиль пишется только
+                                    ссылка.
+                                </p>
+                            </div>
+                        ) : (
+                            <p className="text-xs text-muted-foreground">
+                                Чтобы загрузить файл подписи, сначала создайте агента — нужен ID для загрузки.
+                            </p>
+                        )}
                     </div>
 
                     <div className="space-y-4">

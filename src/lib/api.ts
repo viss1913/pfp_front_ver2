@@ -603,6 +603,8 @@ export const aiAssistantsAPI = {
   },
 }
 
+export type AgentGender = 'male' | 'female'
+
 export interface Agent {
   id: number
   first_name: string
@@ -619,6 +621,11 @@ export interface Agent {
   position_title?: string
   specialization?: string
   experience_years?: number
+  passport_series?: string
+  passport_number?: string
+  birth_date?: string
+  gender?: AgentGender
+  signature_image_url?: string
   created_at?: string
   updated_at?: string
 }
@@ -639,6 +646,11 @@ export interface AgentCreate {
   position_title?: string
   specialization?: string
   experience_years?: number
+  passport_series?: string
+  passport_number?: string
+  birth_date?: string
+  gender?: AgentGender
+  signature_image_url?: string
 }
 
 export interface AgentUpdate {
@@ -657,6 +669,17 @@ export interface AgentUpdate {
   position_title?: string
   specialization?: string
   experience_years?: number
+  passport_series?: string
+  passport_number?: string
+  birth_date?: string
+  gender?: AgentGender
+  signature_image_url?: string
+}
+
+export interface AgentSignatureUploadResponse {
+  url: string
+  signature_image_url: string
+  agent: Agent
 }
 
 export const agentsAPI = {
@@ -674,6 +697,25 @@ export const agentsAPI = {
   },
   update: async (id: number, data: AgentUpdate): Promise<Agent> => {
     const response = await api.patch<Agent>(`/pfp/agents/${id}`, data)
+    return response.data
+  },
+  uploadSignature: async (id: number, image: File): Promise<AgentSignatureUploadResponse> => {
+    const formData = new FormData()
+    formData.append('image', image)
+    const response = await api.post<AgentSignatureUploadResponse>(
+      `/pfp/agents/${id}/signature-upload`,
+      formData,
+      {
+        transformRequest: [
+          (data, headers) => {
+            if (data instanceof FormData) {
+              delete headers['Content-Type']
+            }
+            return data
+          },
+        ],
+      }
+    )
     return response.data
   },
 }
