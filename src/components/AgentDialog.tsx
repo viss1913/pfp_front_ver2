@@ -34,6 +34,7 @@ function buildAgentPayload(formData: Record<string, unknown>, isEdit: boolean): 
         'last_name',
         'middle_name',
         'email',
+        'email_corp',
         'password',
         'phone',
         'telegram_bot',
@@ -93,6 +94,7 @@ export function AgentDialog({
         last_name: '',
         middle_name: '',
         email: '',
+        email_corp: '',
         password: '',
         phone: '',
         telegram_bot: '',
@@ -119,6 +121,7 @@ export function AgentDialog({
                     last_name: agent.last_name || '',
                     middle_name: agent.middle_name || '',
                     email: agent.email || '',
+                    email_corp: agent.email_corp || '',
                     password: '',
                     phone: agent.phone || '',
                     telegram_bot: agent.telegram_bot || '',
@@ -142,6 +145,7 @@ export function AgentDialog({
                     last_name: '',
                     middle_name: '',
                     email: '',
+                    email_corp: '',
                     password: '',
                     phone: '',
                     telegram_bot: '',
@@ -299,6 +303,23 @@ export function AgentDialog({
                                     required={!agent}
                                 />
                             </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="email_corp">
+                                Корпоративный ящик (только имя до @), для исходящей почты с домена банка
+                            </Label>
+                            <Input
+                                id="email_corp"
+                                type="text"
+                                autoComplete="off"
+                                value={formData.email_corp}
+                                onChange={(e) => handleChange('email_corp', e.target.value)}
+                                placeholder="например vissarov или полный адрес"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Необязательно. Если ввести адрес целиком, сервер возьмёт только часть до @.
+                            </p>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">

@@ -611,6 +611,8 @@ export interface Agent {
   last_name: string
   middle_name?: string
   email: string
+  /** Локальная часть корп. почты до @ (или полный адрес — бэк обрежет). */
+  email_corp?: string
   phone?: string
   telegram_bot?: string
   telegram_channel?: string
@@ -636,6 +638,7 @@ export interface AgentCreate {
   middle_name?: string
   email: string
   password: string
+  email_corp?: string
   phone?: string
   telegram_bot?: string
   telegram_channel?: string
@@ -659,6 +662,7 @@ export interface AgentUpdate {
   middle_name?: string
   email?: string
   password?: string
+  email_corp?: string
   phone?: string
   telegram_bot?: string
   telegram_channel?: string
