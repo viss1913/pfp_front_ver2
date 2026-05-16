@@ -16,7 +16,14 @@ import {
     AgentGender,
     AgentUpdate,
     agentsAPI,
+    authAPI,
 } from '@/lib/api'
+import { usePartnerAgentConfig } from '@/hooks/usePartnerAgentConfig'
+import {
+    formatAgentSaveError,
+    isPartnerRefUrl,
+    validatePartnerAgentId,
+} from '@/lib/partnerAgent'
 import {
     Select,
     SelectContent,
@@ -51,12 +58,14 @@ function buildAgentPayload(formData: Record<string, unknown>, isEdit: boolean): 
         'birth_date',
         'gender',
         'signature_image_url',
+        'partner_agent_id',
     ] as const
 
     const out: Record<string, unknown> = {}
     for (const k of keys) {
         const v = formData[k]
         if (v === undefined) continue
+        if (k === 'partner_agent_id') continue
         if (typeof v === 'string' && v.trim() === '' && k !== 'password') {
             continue
         }
@@ -64,6 +73,17 @@ function buildAgentPayload(formData: Record<string, unknown>, isEdit: boolean): 
             continue
         }
         out[k] = v
+    }
+
+    const partnerRaw = String(formData.partner_agent_id ?? '').trim()
+    if (isEdit) {
+        out.partner_agent_id = partnerRaw === '' ? null : partnerRaw
+    } else if (partnerRaw) {
+        if (isPartnerRefUrl(partnerRaw)) {
+            out.partner_ref_url = partnerRaw
+        } else {
+            out.partner_agent_id = partnerRaw
+        }
     }
 
     if (isEdit && (!out.password || String(out.password).trim() === '')) {
@@ -86,9 +106,12 @@ export function AgentDialog({
     agent,
     onSuccess,
 }: AgentDialogProps) {
+    const partnerConfig = usePartnerAgentConfig()
     const [loading, setLoading] = useState(false)
     const [signatureUploading, setSignatureUploading] = useState(false)
+    const [parsingRef, setParsingRef] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [partnerRefUrl, setPartnerRefUrl] = useState('')
     const [formData, setFormData] = useState({
         first_name: '',
         last_name: '',
@@ -111,6 +134,7 @@ export function AgentDialog({
         birth_date: '',
         gender: '' as '' | AgentGender,
         signature_image_url: '',
+        partner_agent_id: '',
     })
 
     useEffect(() => {
@@ -138,6 +162,7 @@ export function AgentDialog({
                     birth_date: agent.birth_date || '',
                     gender: (agent.gender as AgentGender | undefined) || '',
                     signature_image_url: agent.signature_image_url || '',
+                    partner_agent_id: agent.partner_agent_id || '',
                 })
             } else {
                 setFormData({
@@ -162,35 +187,103 @@ export function AgentDialog({
                     birth_date: '',
                     gender: '',
                     signature_image_url: '',
+                    partner_agent_id: '',
                 })
             }
+            setPartnerRefUrl('')
             setError(null)
         }
     }, [open, agent])
+
+    const parsePartnerRefToId = async (ref: string): Promise<string> => {
+        const projectKey = localStorage.getItem('project_key')
+        if (!projectKey) {
+            throw new Error('Не выбран проект — нельзя распознать ссылку')
+        }
+        const res = await authAPI.parsePartnerAgent({
+            project_key: projectKey,
+            partner_ref_url: ref,
+        })
+        return res.partner_agent_id
+    }
+
+    const handleParsePartnerRef = async () => {
+        const ref = partnerRefUrl.trim()
+        if (!ref) {
+            setError('Вставьте ссылку партнёра')
+            return
+        }
+
+        setParsingRef(true)
+        setError(null)
+        try {
+            const partnerAgentId = await parsePartnerRefToId(ref)
+            setFormData((prev) => ({
+                ...prev,
+                partner_agent_id: partnerAgentId,
+            }))
+            setPartnerRefUrl('')
+        } catch (err: unknown) {
+            console.error(err)
+            setError(formatAgentSaveError(err))
+        } finally {
+            setParsingRef(false)
+        }
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setLoading(true)
         setError(null)
 
+        const partnerValue = formData.partner_agent_id.trim()
+        if (partnerConfig.requiredOnCreate && !agent && !partnerValue) {
+            setError(`Требуется ${partnerConfig.label}`)
+            setLoading(false)
+            return
+        }
+        let partnerAgentId = partnerValue
+        if (partnerValue && isPartnerRefUrl(partnerValue)) {
+            try {
+                partnerAgentId = await parsePartnerRefToId(partnerValue)
+            } catch (err: unknown) {
+                console.error(err)
+                setError(formatAgentSaveError(err))
+                setLoading(false)
+                return
+            }
+        }
+
+        if (partnerAgentId) {
+            const validationError = validatePartnerAgentId(partnerAgentId)
+            if (validationError) {
+                setError(validationError)
+                setLoading(false)
+                return
+            }
+        }
+
+        const payloadFormData = {
+            ...formData,
+            partner_agent_id: partnerAgentId,
+        }
+
         try {
             if (agent) {
                 await agentsAPI.update(
                     agent.id,
-                    buildAgentPayload(formData as unknown as Record<string, unknown>, true) as AgentUpdate
+                    buildAgentPayload(payloadFormData as unknown as Record<string, unknown>, true) as AgentUpdate
                 )
             } else {
                 await agentsAPI.create(
-                    buildAgentPayload(formData as unknown as Record<string, unknown>, false) as AgentCreate
+                    buildAgentPayload(payloadFormData as unknown as Record<string, unknown>, false) as AgentCreate
                 )
             }
             onSuccess()
             onOpenChange(false)
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err)
-            setError(
-                err.response?.data?.message || err.message || 'Ошибка при сохранении'
-            )
+            setError(formatAgentSaveError(err))
         } finally {
             setLoading(false)
         }
@@ -340,6 +433,52 @@ export function AgentDialog({
                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleChange('is_active', e.target.checked)}
                                 />
                                 <Label htmlFor="is_active">Активен (может входить в систему)</Label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <h3 className="text-sm font-medium border-b pb-2">Партнёр</h3>
+                        <div className="space-y-2">
+                            <Label htmlFor="partner_agent_id">
+                                {partnerConfig.label}
+                                {partnerConfig.requiredOnCreate && !agent ? (
+                                    <span className="text-destructive"> *</span>
+                                ) : null}
+                            </Label>
+                            <Input
+                                id="partner_agent_id"
+                                value={formData.partner_agent_id}
+                                onChange={(e) => handleChange('partner_agent_id', e.target.value)}
+                                placeholder="Например FIN12345"
+                                autoComplete="off"
+                                required={partnerConfig.requiredOnCreate && !agent}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Латиница, цифры, _ и -, 1–64 символа. Пустое поле при сохранении сбрасывает значение.
+                                Можно вставить ссылку в поле выше — распознаем при сохранении.
+                            </p>
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+                                    <div className="flex-1 space-y-1">
+                                        <Label htmlFor="partner_ref_url" className="text-xs text-muted-foreground">
+                                            Или ссылка партнёра
+                                        </Label>
+                                        <Input
+                                            id="partner_ref_url"
+                                            value={partnerRefUrl}
+                                            onChange={(e) => setPartnerRefUrl(e.target.value)}
+                                            placeholder="https://…?agent_id=123"
+                                            autoComplete="off"
+                                        />
+                                    </div>
+                                    <Button
+                                        type="button"
+                                        variant="secondary"
+                                        disabled={parsingRef || loading || !partnerRefUrl.trim()}
+                                        onClick={handleParsePartnerRef}
+                                    >
+                                        {parsingRef ? 'Распознаём…' : 'Распознать из ссылки'}
+                                    </Button>
                             </div>
                         </div>
                     </div>

@@ -12,8 +12,10 @@ import {
 import { Agent, agentsAPI } from '@/lib/api'
 import { AgentDialog } from '@/components/AgentDialog'
 import { Input } from '@/components/ui/input'
+import { usePartnerAgentConfig } from '@/hooks/usePartnerAgentConfig'
 
 export default function Agents() {
+    const partnerConfig = usePartnerAgentConfig()
     const [agents, setAgents] = useState<Agent[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [dialogOpen, setDialogOpen] = useState(false)
@@ -47,7 +49,7 @@ export default function Agents() {
     }
 
     const filteredAgents = agents.filter(agent => {
-        const fullSearch = `${agent.first_name} ${agent.last_name} ${agent.email} ${agent.city} ${agent.phone}`.toLowerCase()
+        const fullSearch = `${agent.first_name} ${agent.last_name} ${agent.email} ${agent.city} ${agent.phone} ${agent.partner_agent_id || ''}`.toLowerCase()
         return fullSearch.includes(searchQuery.toLowerCase())
     })
 
@@ -83,6 +85,7 @@ export default function Agents() {
                             <TableHead className="w-[50px]">ID</TableHead>
                             <TableHead>ФИО</TableHead>
                             <TableHead>Email / Телефон</TableHead>
+                            <TableHead>{partnerConfig.label}</TableHead>
                             <TableHead>Город / Регион</TableHead>
                             <TableHead>Telegram</TableHead>
                             <TableHead className="w-[100px]">Статус</TableHead>
@@ -92,13 +95,13 @@ export default function Agents() {
                     <TableBody>
                         {isLoading ? (
                             <TableRow>
-                                <TableCell colSpan={7} className="text-center py-8">
+                                <TableCell colSpan={8} className="text-center py-8">
                                     Загрузка...
                                 </TableCell>
                             </TableRow>
                         ) : filteredAgents.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={7} className="text-center py-8">
+                                <TableCell colSpan={8} className="text-center py-8">
                                     {searchQuery ? 'Ничего не найдено' : 'Нет добавленных агентов'}
                                 </TableCell>
                             </TableRow>
@@ -112,6 +115,11 @@ export default function Agents() {
                                     <TableCell>
                                         <div className="text-sm">{agent.email}</div>
                                         <div className="text-xs text-muted-foreground">{agent.phone}</div>
+                                    </TableCell>
+                                    <TableCell className="text-sm font-mono">
+                                        {agent.partner_agent_id || (
+                                            <span className="text-muted-foreground">—</span>
+                                        )}
                                     </TableCell>
                                     <TableCell className="text-sm">
                                         {agent.city}{agent.region ? `, ${agent.region}` : ''}

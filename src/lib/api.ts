@@ -357,6 +357,17 @@ export interface HomeOwnersCalculationResponse {
 }
 
 // API методы
+export interface ParsePartnerAgentRequest {
+  project_key: string
+  partner_agent_id?: string
+  partner_ref_url?: string
+}
+
+export interface ParsePartnerAgentResponse {
+  partner_agent_id: string
+  label?: string
+}
+
 export const authAPI = {
   login: async (data: LoginRequest): Promise<LoginResponse> => {
     const response = await api.post<LoginResponse>('/auth/login', data)
@@ -364,6 +375,15 @@ export const authAPI = {
   },
   me: async () => {
     const response = await api.get('/auth/me')
+    return response.data
+  },
+  parsePartnerAgent: async (
+    data: ParsePartnerAgentRequest
+  ): Promise<ParsePartnerAgentResponse> => {
+    const response = await api.post<ParsePartnerAgentResponse>(
+      '/auth/parse-partner-agent',
+      data
+    )
     return response.data
   },
 }
@@ -628,6 +648,9 @@ export interface Agent {
   birth_date?: string
   gender?: AgentGender
   signature_image_url?: string
+  partner_agent_id?: string | null
+  parent_agent_id?: number | null
+  referral_slug?: string | null
   created_at?: string
   updated_at?: string
 }
@@ -654,6 +677,9 @@ export interface AgentCreate {
   birth_date?: string
   gender?: AgentGender
   signature_image_url?: string
+  partner_agent_id?: string
+  partner_ref_url?: string
+  parent_agent_id?: number
 }
 
 export interface AgentUpdate {
@@ -678,6 +704,8 @@ export interface AgentUpdate {
   birth_date?: string
   gender?: AgentGender
   signature_image_url?: string
+  partner_agent_id?: string | null
+  parent_agent_id?: number | null
 }
 
 export interface AgentSignatureUploadResponse {
@@ -985,8 +1013,15 @@ export const pfpAPI = {
 
 // --- Admin Management API (Super Admin) ---
 
+export interface PartnerAgentIdProjectSettings {
+  label?: string
+  require_on_admin_create?: boolean
+  require_on_public_registration?: boolean
+}
+
 export interface ProjectSettings {
   agents_see_all_clients?: boolean
+  partner_agent_id?: PartnerAgentIdProjectSettings
 }
 
 export interface Project {
