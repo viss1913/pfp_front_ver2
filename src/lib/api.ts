@@ -731,6 +731,9 @@ export const agentsAPI = {
     const response = await api.patch<Agent>(`/pfp/agents/${id}`, data)
     return response.data
   },
+  delete: async (id: number): Promise<void> => {
+    await api.delete(`/pfp/agents/${id}`)
+  },
   uploadSignature: async (id: number, image: File): Promise<AgentSignatureUploadResponse> => {
     const formData = new FormData()
     formData.append('image', image)
