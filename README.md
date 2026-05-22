@@ -48,9 +48,13 @@ npm run build
 
 ## 📡 API
 
-Бэкенд API: `https://pfpbackend-production.up.railway.app`
+Базовый URL бэкенда задаётся переменной **`VITE_API_BASE_URL`** (полный путь с `/api`).
 
-Документация API: `https://pfpbackend-production.up.railway.app/api-docs`
+- Локально: скопируй `.env.example` → `.env.local` и подставь свой URL
+- **Vercel**: Project → Settings → Environment Variables → `VITE_API_BASE_URL`
+- Если переменная не задана, используется прод: `https://pfpbackend-production.up.railway.app/api`
+
+Документация API: `{origin без /api}/api-docs` (для дефолтного бэка — `https://pfpbackend-production.up.railway.app/api-docs`)
 
 ## 📱 Функциональность
 

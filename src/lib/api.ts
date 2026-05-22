@@ -1,6 +1,10 @@
 import axios from 'axios'
 
-const API_BASE_URL = 'https://pfpbackend-production.up.railway.app/api'
+const DEFAULT_API_BASE_URL = 'https://pfpbackend-production.up.railway.app/api'
+
+/** Задаётся в Vercel / .env: VITE_API_BASE_URL (полный URL с /api) */
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL?.trim() || DEFAULT_API_BASE_URL
 
 // Создаем экземпляр axios
 const api = axios.create({
