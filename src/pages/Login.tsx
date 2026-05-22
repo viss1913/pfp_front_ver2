@@ -22,8 +22,30 @@ export default function Login() {
     try {
       await login(email, password)
       navigate('/')
-    } catch (err: any) {
-      setError(err.response?.data?.error || err.response?.data?.message || 'Ошибка входа')
+    } catch (err: unknown) {
+      const axiosErr = err as {
+        response?: { data?: { error?: string; message?: string } }
+        message?: string
+        code?: string
+      }
+      if (!axiosErr.response) {
+        const insecureApi =
+          window.location.protocol === 'https:' &&
+          import.meta.env.VITE_API_BASE_URL?.trim().startsWith('http:')
+        setError(
+          insecureApi
+            ? 'API на HTTP, а сайт на HTTPS — браузер блокирует запрос. Укажи HTTPS в VITE_API_BASE_URL или убери переменную.'
+            : axiosErr.code === 'ERR_NETWORK'
+              ? 'Сервер API недоступен (сеть/CORS). Проверь VITE_API_BASE_URL на Vercel и redeploy.'
+              : 'Не удалось связаться с API. Проверь адрес бэкенда и redeploy.'
+        )
+      } else {
+        setError(
+          axiosErr.response.data?.error ||
+            axiosErr.response.data?.message ||
+            'Ошибка входа'
+        )
+      }
     } finally {
       setLoading(false)
     }

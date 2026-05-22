@@ -2,9 +2,29 @@ import axios from 'axios'
 
 const DEFAULT_API_BASE_URL = 'https://pfpbackend-production.up.railway.app/api'
 
-/** Задаётся в Vercel / .env: VITE_API_BASE_URL (полный URL с /api) */
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL?.trim() || DEFAULT_API_BASE_URL
+function resolveApiBaseUrl(): string {
+  const raw = import.meta.env.VITE_API_BASE_URL?.trim()
+  if (!raw) return DEFAULT_API_BASE_URL
+
+  let url = raw.replace(/\/+$/, '')
+  if (!url.endsWith('/api')) {
+    url = `${url}/api`
+  }
+  return url
+}
+
+/** Задаётся в Vercel / .env: VITE_API_BASE_URL (origin или полный URL с /api) */
+export const API_BASE_URL = resolveApiBaseUrl()
+
+if (typeof window !== 'undefined') {
+  if (window.location.protocol === 'https:' && API_BASE_URL.startsWith('http:')) {
+    console.warn(
+      '[API] VITE_API_BASE_URL использует HTTP, а админка на HTTPS — браузер заблокирует запросы (mixed content).',
+      API_BASE_URL
+    )
+  }
+  console.info('[API] base URL:', API_BASE_URL)
+}
 
 // Создаем экземпляр axios
 const api = axios.create({
