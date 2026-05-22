@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { isSuperAdmin } from '@/lib/authUser'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Products from './pages/Products'
@@ -29,7 +30,7 @@ function ProtectedRoute({ children, allowNoProject = false }: { children: React.
   }
 
   // If super_admin and no project selected, redirect to project selector (unless already there)
-  if (user?.role === 'super_admin' && !activeProject && !allowNoProject && location.pathname !== '/super-admin') {
+  if (isSuperAdmin(user?.role) && !activeProject && !allowNoProject && location.pathname !== '/super-admin') {
     return <Navigate to="/super-admin" replace />
   }
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
+import { isSuperAdmin } from '@/lib/authUser'
 import { adminManagementAPI } from '@/lib/api'
 import { getPartnerAgentIdConfig, type PartnerAgentIdConfig } from '@/lib/partnerAgent'
 
@@ -13,7 +14,7 @@ export function usePartnerAgentConfig(): PartnerAgentIdConfig {
     let cancelled = false
     setConfig(getPartnerAgentIdConfig(activeProject?.settings))
 
-    if (user?.role === 'super_admin' && activeProject?.id) {
+    if (isSuperAdmin(user?.role) && activeProject?.id) {
       adminManagementAPI
         .getProject(activeProject.id)
         .then((project) => {

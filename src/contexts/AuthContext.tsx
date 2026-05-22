@@ -1,13 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { authAPI, Project } from '@/lib/api'
+import { AuthUser, parseAuthUser } from '@/lib/authUser'
 
-interface User {
-  id: number
-  email: string
-  name: string
-  role: string
-  agentId: number
-}
+type User = AuthUser
 
 interface AuthContextType {
   user: User | null
@@ -31,7 +26,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (token && userStr) {
       try {
-        setUser(JSON.parse(userStr))
+        const stored = parseAuthUser(JSON.parse(userStr) as Record<string, unknown>, token)
+        setUser(stored)
+        authAPI
+          .me()
+          .then((me) => {
+            const fresh = parseAuthUser(
+              { ...stored, ...(me as Record<string, unknown>) },
+              token
+            )
+            setUser(fresh)
+            localStorage.setItem('user', JSON.stringify(fresh))
+            console.info('[Auth] role:', fresh.role)
+          })
+          .catch(() => {})
       } catch (e) {
         localStorage.removeItem('token')
         localStorage.removeItem('user')
@@ -53,8 +61,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     const response = await authAPI.login({ email, password })
     localStorage.setItem('token', response.token)
-    localStorage.setItem('user', JSON.stringify(response.user))
-    setUser(response.user)
+
+    let user = parseAuthUser(
+      response.user as unknown as Record<string, unknown>,
+      response.token
+    )
+
+    try {
+      const me = await authAPI.me()
+      user = parseAuthUser({ ...user, ...(me as Record<string, unknown>) }, response.token)
+    } catch {
+      // оставляем user из login
+    }
+
+    console.info('[Auth] login role:', user.role, { email: user.email })
+    localStorage.setItem('user', JSON.stringify(user))
+    setUser(user)
   }
 
   const selectProject = (project: Project | null) => {

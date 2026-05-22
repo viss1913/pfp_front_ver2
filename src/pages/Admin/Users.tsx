@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { adminManagementAPI, AdminUser, Project } from '@/lib/api'
 import { useAuth } from '@/contexts/AuthContext'
+import { isSuperAdmin } from '@/lib/authUser'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -231,7 +232,7 @@ export default function AdminUsers() {
                                     </div>
                                 </TableCell>
                                 <TableCell>
-                                    <Badge variant={user.role === 'super_admin' ? 'default' : 'secondary'} className="flex items-center gap-1 w-fit">
+                                    <Badge variant={isSuperAdmin(user.role) ? 'default' : 'secondary'} className="flex items-center gap-1 w-fit">
                                         <Shield className="h-3 w-3" />
                                         {user.role}
                                     </Badge>

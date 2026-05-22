@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
+import { isSuperAdmin } from '@/lib/authUser'
 import { adminManagementAPI, Project } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import {
@@ -33,7 +34,7 @@ export default function Layout() {
   const [projects, setProjects] = useState<Project[]>([])
 
   useEffect(() => {
-    if (user?.role === 'super_admin') {
+    if (isSuperAdmin(user?.role)) {
       adminManagementAPI.listProjects().then(setProjects).catch(console.error)
     }
   }, [user])
@@ -88,7 +89,7 @@ export default function Layout() {
                 )
               })}
 
-              {user?.role === 'super_admin' && (
+              {isSuperAdmin(user?.role) && (
                 <>
                   <div className="mt-6 mb-2 px-3 text-xs font-semibold uppercase text-muted-foreground tracking-wider">
                     Super Admin
@@ -142,7 +143,7 @@ export default function Layout() {
           {/* Top Header */}
           <header className="flex h-16 items-center border-b bg-card px-8 gap-4 justify-between">
             <div className="flex items-center gap-4">
-              {user?.role === 'super_admin' && activeProject && (
+              {isSuperAdmin(user?.role) && activeProject && (
                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                   <Building2 className="h-4 w-4" />
                   <span>В контексте:</span>
@@ -176,7 +177,7 @@ export default function Layout() {
                   </DropdownMenu>
                 </div>
               )}
-              {user?.role !== 'super_admin' && activeProject && (
+              {!isSuperAdmin(user?.role) && activeProject && (
                 <div className="flex items-center gap-2 text-sm font-medium">
                   <Building2 className="h-4 w-4 text-muted-foreground" />
                   <span>Проект: <span className="font-bold">{activeProject.name}</span></span>
