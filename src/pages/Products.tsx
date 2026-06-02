@@ -71,22 +71,51 @@ function schemaToDrafts(schema: CommissionSchema): CommissionRuleDraft[] {
   return schema.rules.map(ruleToDraft)
 }
 
-function draftsToSchema(drafts: CommissionRuleDraft[], version: number): CommissionSchema {
+function draftsToSchema(
+  drafts: CommissionRuleDraft[],
+  version: number,
+  ruleTypesMeta: CommissionRuleTypeMeta[]
+): CommissionSchema {
+  const metaByCode = new Map(ruleTypesMeta.map((meta) => [meta.code, meta]))
   return {
     version,
     rules: drafts.map(({ _key, ...rule }) => {
       const cleaned: CommissionRule = { rule_type: rule.rule_type }
-      if (rule.name?.trim()) cleaned.name = rule.name.trim()
-      if (rule.base) cleaned.base = rule.base
-      if (rule.frequency) cleaned.frequency = rule.frequency
-      if (rule.rate_percent != null && !Number.isNaN(rule.rate_percent)) {
+      const meta = metaByCode.get(rule.rule_type)
+      if (!meta) return cleaned
+      if (fieldAllowed(meta, 'name') && rule.name?.trim()) cleaned.name = rule.name.trim()
+      if (
+        fieldAllowed(meta, 'base') &&
+        rule.base &&
+        meta.allowed_base.includes(rule.base)
+      ) {
+        cleaned.base = rule.base
+      }
+      if (
+        fieldAllowed(meta, 'frequency') &&
+        rule.frequency &&
+        meta.allowed_frequency.includes(rule.frequency)
+      ) {
+        cleaned.frequency = rule.frequency
+      }
+      if (
+        fieldAllowed(meta, 'rate_percent') &&
+        rule.rate_percent != null &&
+        !Number.isNaN(rule.rate_percent)
+      ) {
         cleaned.rate_percent = rule.rate_percent
       }
-      if (rule.fixed_amount_rub != null && !Number.isNaN(rule.fixed_amount_rub)) {
+      if (
+        fieldAllowed(meta, 'fixed_amount_rub') &&
+        rule.fixed_amount_rub != null &&
+        !Number.isNaN(rule.fixed_amount_rub)
+      ) {
         cleaned.fixed_amount_rub = rule.fixed_amount_rub
       }
-      if (rule.years) cleaned.years = { ...rule.years }
-      if (rule.tiers?.length) cleaned.tiers = rule.tiers.map((t) => ({ ...t }))
+      if (meta.supports_years && rule.years) cleaned.years = { ...rule.years }
+      if (meta.supports_tiers && rule.tiers?.length) {
+        cleaned.tiers = rule.tiers.map((t) => ({ ...t }))
+      }
       return cleaned
     }),
   }
@@ -103,6 +132,12 @@ function defaultRuleForType(meta: CommissionRuleTypeMeta): CommissionRuleDraft {
 
 function fieldAllowed(meta: CommissionRuleTypeMeta, field: string) {
   return meta.required_fields.includes(field) || meta.optional_fields.includes(field)
+}
+
+function normalizeFieldPath(path: string): string {
+  return path
+    .replace(/^commission_schema\./, '')
+    .replace(/\[(\d+)\]/g, '.$1')
 }
 
 export default function Products() {
@@ -190,7 +225,10 @@ export default function Products() {
   const getRuleMeta = (ruleType: CommissionRuleType): CommissionRuleTypeMeta | undefined =>
     commissionMeta?.rule_types.find((t) => t.code === ruleType)
 
-  const getFieldError = (fieldPath: string) => commissionFieldErrors[fieldPath]
+  const getFieldError = (fieldPath: string) => {
+    const normalized = normalizeFieldPath(fieldPath)
+    return commissionFieldErrors[fieldPath] || commissionFieldErrors[normalized]
+  }
 
   const fieldErrorClass = (fieldPath: string) =>
     getFieldError(fieldPath) ? 'border-red-500' : ''
@@ -338,7 +376,8 @@ export default function Products() {
       commissionPayload = {
         commission_schema: draftsToSchema(
           commissionRules,
-          commissionMeta.version ?? initialCommissionSchema?.version ?? 1
+          commissionMeta.version ?? initialCommissionSchema?.version ?? 1,
+          commissionMeta.rule_types
         ),
       }
     } else if (commissionTouched && editingProduct && initialCommissionSchema) {
@@ -384,7 +423,7 @@ export default function Products() {
         const map: Record<string, string> = {}
         for (const item of details) {
           if (item.field_path && item.message) {
-            map[item.field_path] = item.message
+            map[normalizeFieldPath(item.field_path)] = item.message
           }
         }
         if (Object.keys(map).length > 0) {
