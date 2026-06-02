@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Table,
   TableBody,
@@ -49,6 +50,14 @@ export default function Products() {
   const [productTypes, setProductTypes] = useState<ProductType[] | null>(null)
   const [typesLoading, setTypesLoading] = useState(false)
   const [typesError, setTypesError] = useState<string | null>(null)
+  const [commissionSchemaText, setCommissionSchemaText] = useState('')
+  const [commissionSchemaError, setCommissionSchemaError] = useState<string | null>(null)
+
+  const isValidCommissionSchema = (value: unknown): value is NonNullable<Product['commission_schema']> => {
+    if (!value || typeof value !== 'object') return false
+    const schema = value as { version?: unknown; rules?: unknown }
+    return typeof schema.version === 'number' && Array.isArray(schema.rules)
+  }
 
   useEffect(() => {
     loadProducts()
@@ -82,6 +91,8 @@ export default function Products() {
       max_amount: 0,
       yields: [],
     })
+    setCommissionSchemaText('')
+    setCommissionSchemaError(null)
     loadProductTypes()
     setIsDialogOpen(true)
   }
@@ -142,6 +153,12 @@ export default function Products() {
         yield_percent: line.yield_percent,
       })) || [],
     })
+    setCommissionSchemaText(
+      product.commission_schema
+        ? JSON.stringify(product.commission_schema, null, 2)
+        : ''
+    )
+    setCommissionSchemaError(null)
     loadProductTypes()
     setIsDialogOpen(true)
   }
@@ -181,6 +198,22 @@ export default function Products() {
     }
 
     try {
+      let parsedCommissionSchema: Product['commission_schema'] | undefined = undefined
+      if (commissionSchemaText.trim()) {
+        try {
+          const parsed = JSON.parse(commissionSchemaText) as unknown
+          if (!isValidCommissionSchema(parsed)) {
+            setCommissionSchemaError('commission_schema должен содержать version:number и rules:[]')
+            return
+          }
+          parsedCommissionSchema = parsed
+          setCommissionSchemaError(null)
+        } catch {
+          setCommissionSchemaError('Некорректный JSON в схеме комиссий')
+          return
+        }
+      }
+
       // Преобразуем yields в lines для отправки на бэкенд
       const payload = {
         name: formData.name.trim(),
@@ -193,6 +226,11 @@ export default function Products() {
           max_amount: yieldItem.amount_to,
           yield_percent: yieldItem.yield_percent,
         })),
+        ...(parsedCommissionSchema !== undefined
+          ? { commission_schema: parsedCommissionSchema }
+          : editingProduct?.commission_schema
+            ? { commission_schema: editingProduct.commission_schema }
+            : {}),
       }
 
       if (editingProduct) {
@@ -472,6 +510,40 @@ export default function Products() {
                     </div>
                   ))}
                 </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="commission_schema">Схема комиссий (JSON)</Label>
+              <Textarea
+                id="commission_schema"
+                value={commissionSchemaText}
+                onChange={(e) => {
+                  setCommissionSchemaText(e.target.value)
+                  if (commissionSchemaError) {
+                    setCommissionSchemaError(null)
+                  }
+                }}
+                placeholder={`{
+  "version": 1,
+  "rules": [
+    {
+      "rule_type": "ONE_TIME_PERCENT_OF_PREMIUM",
+      "name": "Единовременная комиссия при продаже",
+      "base": "INITIAL",
+      "frequency": "ONE_TIME",
+      "rate_percent": 30
+    }
+  ]
+}`}
+                rows={10}
+              />
+              {commissionSchemaError ? (
+                <p className="text-sm text-red-600">{commissionSchemaError}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  Можно оставить пустым. При редактировании существующая схема отправится в PATCH/PUT даже без изменений.
+                </p>
               )}
             </div>
           </div>

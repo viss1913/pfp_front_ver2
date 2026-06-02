@@ -114,8 +114,45 @@ export interface Product {
   is_default?: boolean
   is_active?: number
   agent_id?: number | null
+  commission_schema?: CommissionSchema | null
   created_at?: string
   updated_at?: string
+}
+
+export type CommissionRuleType =
+  | 'ONE_TIME_FIXED'
+  | 'ONE_TIME_PERCENT_OF_PREMIUM'
+  | 'FIRST_YEAR_PERCENT_OF_PREMIUMS'
+  | 'ANNUAL_PERCENT_OF_PREMIUM'
+  | 'AUM_MANAGEMENT_FEE'
+  | 'TIERED_BY_YEAR'
+
+export type CommissionRuleBase = 'INITIAL' | 'FLOW' | 'INITIAL_PLUS_FLOW' | 'AUM_AVG'
+export type CommissionRuleFrequency = 'ONE_TIME' | 'MONTHLY' | 'YEARLY'
+
+export interface CommissionTier {
+  year_from: number
+  year_to: number
+  rate_percent: number
+}
+
+export interface CommissionRule {
+  rule_type: CommissionRuleType
+  name?: string
+  base?: CommissionRuleBase
+  frequency?: CommissionRuleFrequency
+  rate_percent?: number
+  fixed_amount_rub?: number
+  years?: {
+    start: number
+    end: number
+  }
+  tiers?: CommissionTier[]
+}
+
+export interface CommissionSchema {
+  version: number
+  rules: CommissionRule[]
 }
 
 export interface ProductType {
