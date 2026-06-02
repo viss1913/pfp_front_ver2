@@ -155,6 +155,29 @@ export interface CommissionSchema {
   rules: CommissionRule[]
 }
 
+export interface CommissionFieldConstraint {
+  min?: number
+  max?: number
+}
+
+export interface CommissionRuleTypeMeta {
+  code: CommissionRuleType
+  label: string
+  description?: string
+  required_fields: string[]
+  optional_fields: string[]
+  allowed_base: CommissionRuleBase[]
+  allowed_frequency: CommissionRuleFrequency[]
+  supports_years: boolean
+  supports_tiers: boolean
+}
+
+export interface CommissionSchemaMeta {
+  version: number
+  rule_types: CommissionRuleTypeMeta[]
+  field_constraints?: Record<string, CommissionFieldConstraint>
+}
+
 export interface ProductType {
   id: number
   code: string
@@ -471,6 +494,10 @@ export const productsAPI = {
   },
   clone: async (id: number): Promise<Product> => {
     const response = await api.post<Product>(`/pfp/products/${id}/clone`)
+    return response.data
+  },
+  getCommissionSchemaMeta: async (): Promise<CommissionSchemaMeta> => {
+    const response = await api.get<CommissionSchemaMeta>('/pfp/commission-schema/meta')
     return response.data
   },
 }
