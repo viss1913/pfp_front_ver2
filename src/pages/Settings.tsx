@@ -36,7 +36,8 @@ export default function Settings() {
   const [editingSetting, setEditingSetting] = useState<SystemSetting | null>(null)
   const [editValue, setEditValue] = useState<string>('')
   
-  const isAdmin = user?.role === 'admin' || user?.role === 'ADMIN'
+  const normalizedRole = String(user?.role ?? '').toLowerCase()
+  const isAdmin = normalizedRole === 'admin' || normalizedRole === 'super_admin'
 
   useEffect(() => {
     loadSettings()
