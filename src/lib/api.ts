@@ -497,8 +497,22 @@ export const productsAPI = {
     return response.data
   },
   getCommissionSchemaMeta: async (): Promise<CommissionSchemaMeta> => {
-    const response = await api.get<CommissionSchemaMeta>('/pfp/commission-schema/meta')
-    return response.data
+    const paths = [
+      '/pfp/commission-schema/meta',
+      '/pfp/products/commission-schema/meta',
+    ] as const
+    let lastError: unknown
+    for (const path of paths) {
+      try {
+        const response = await api.get<CommissionSchemaMeta>(path)
+        return response.data
+      } catch (error) {
+        lastError = error
+        const status = (error as { response?: { status?: number } }).response?.status
+        if (status !== 404) throw error
+      }
+    }
+    throw lastError
   },
 }
 

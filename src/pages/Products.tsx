@@ -112,8 +112,10 @@ function draftsToSchema(
       ) {
         cleaned.fixed_amount_rub = rule.fixed_amount_rub
       }
-      if (meta.supports_years && rule.years) cleaned.years = { ...rule.years }
-      if (meta.supports_tiers && rule.tiers?.length) {
+      if (fieldAllowed(meta, 'years') && meta.supports_years && rule.years) {
+        cleaned.years = { ...rule.years }
+      }
+      if (fieldAllowed(meta, 'tiers') && meta.supports_tiers && rule.tiers?.length) {
         cleaned.tiers = rule.tiers.map((t) => ({ ...t }))
       }
       return cleaned
@@ -124,7 +126,9 @@ function draftsToSchema(
 function defaultRuleForType(meta: CommissionRuleTypeMeta): CommissionRuleDraft {
   const rule: CommissionRule = { rule_type: meta.code }
   if (meta.allowed_base.length === 1) rule.base = meta.allowed_base[0]
-  if (meta.allowed_frequency.length === 1) rule.frequency = meta.allowed_frequency[0]
+  if (fieldAllowed(meta, 'frequency') && meta.allowed_frequency.length === 1) {
+    rule.frequency = meta.allowed_frequency[0]
+  }
   if (meta.supports_years) rule.years = { start: 1, end: 1 }
   if (meta.supports_tiers) rule.tiers = [{ year_from: 1, year_to: 1, rate_percent: 0 }]
   return ruleToDraft(rule)
@@ -362,9 +366,8 @@ export default function Products() {
 
     let commissionPayload: { commission_schema?: CommissionSchema | null } = {}
 
-    if (!commissionTouched && editingProduct?.commission_schema) {
-      commissionPayload = { commission_schema: editingProduct.commission_schema }
-    } else if (commissionEnabled) {
+    // PUT: не передали commission_schema — бэк не трогает схему
+    if (commissionEnabled) {
       if (!commissionMeta) {
         setCommissionFormError('Метаданные комиссий не загружены. Нажмите «Повторить».')
         return
