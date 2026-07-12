@@ -1184,5 +1184,187 @@ export const adminManagementAPI = {
   },
 }
 
+// --- Content Factory (admin) ---
+// Headers JWT + X-Project-Key already via interceptor (localStorage token / project_key)
+
+export type OfferStatus = 'draft' | 'published' | 'archived'
+
+export interface ContentTemplate {
+  id: number
+  project_id: number
+  title: string
+  description?: string | null
+  html_source: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface ContentTemplateCreate {
+  title: string
+  description?: string | null
+  html_source: string
+  slots?: Record<string, unknown>
+  is_active?: boolean
+}
+
+export interface ContentOffer {
+  id: number
+  project_id: number
+  template_id?: number | null
+  title: string
+  kind: string
+  payload: Record<string, unknown>
+  cta_url_base?: string | null
+  cta_label?: string | null
+  generated_html?: string | null
+  status: OfferStatus
+  expires_at?: string | null
+  published_at?: string | null
+  created_at?: string
+  updated_at?: string
+}
+
+export interface ContentOfferCreate {
+  title: string
+  kind?: string
+  template_id?: number | null
+  payload?: Record<string, unknown>
+  cta_url_base?: string | null
+  cta_label?: string | null
+  expires_at?: string | null
+}
+
+export interface ContentChatMessage {
+  id?: number
+  role: 'user' | 'assistant' | 'system'
+  content: string
+  created_at?: string
+}
+
+export interface ContentChatPostResponse {
+  offer: ContentOffer
+  messages: ContentChatMessage[]
+}
+
+function unwrapList<T>(data: unknown): T[] {
+  if (Array.isArray(data)) return data as T[]
+  if (data && typeof data === 'object') {
+    const obj = data as Record<string, unknown>
+    if (Array.isArray(obj.items)) return obj.items as T[]
+    if (Array.isArray(obj.results)) return obj.results as T[]
+    if (Array.isArray(obj.data)) return obj.data as T[]
+  }
+  return []
+}
+
+/** Parse API error for UI (422 CTA removed by AI) */
+export function getContentFactoryErrorMessage(err: unknown): string {
+  if (axios.isAxiosError(err)) {
+    const status = err.response?.status
+    const data = err.response?.data as
+      | { detail?: string | { msg?: string }[]; message?: string; error?: string }
+      | undefined
+
+    if (status === 422) {
+      return 'AI удалил кнопку CTA, повторите запрос'
+    }
+    if (status === 400) {
+      if (typeof data?.detail === 'string') return data.detail
+      return data?.message || data?.error || 'Некорректный запрос (400)'
+    }
+    if (status === 401) return 'Не авторизован — проверьте JWT'
+    if (status === 403) return 'Нет доступа — проверьте x-project-key и роль'
+
+    if (typeof data?.detail === 'string') return data.detail
+    if (Array.isArray(data?.detail)) {
+      return data.detail.map((d) => d.msg || JSON.stringify(d)).join('; ')
+    }
+    if (data?.message) return data.message
+    if (data?.error) return data.error
+    if (err.message) return err.message
+  }
+  if (err instanceof Error) return err.message
+  return 'Неизвестная ошибка'
+}
+
+export const contentFactoryAPI = {
+  // Templates
+  listTemplates: async (): Promise<ContentTemplate[]> => {
+    const response = await api.get('/admin/content-factory/templates')
+    return unwrapList<ContentTemplate>(response.data)
+  },
+  getTemplate: async (id: number): Promise<ContentTemplate> => {
+    const response = await api.get<ContentTemplate>(`/admin/content-factory/templates/${id}`)
+    return response.data
+  },
+  createTemplate: async (data: ContentTemplateCreate): Promise<ContentTemplate> => {
+    const response = await api.post<ContentTemplate>('/admin/content-factory/templates', data)
+    return response.data
+  },
+  updateTemplate: async (id: number, data: ContentTemplateCreate): Promise<ContentTemplate> => {
+    const response = await api.put<ContentTemplate>(`/admin/content-factory/templates/${id}`, data)
+    return response.data
+  },
+  deleteTemplate: async (id: number): Promise<void> => {
+    await api.delete(`/admin/content-factory/templates/${id}`)
+  },
+
+  // Offers
+  listOffers: async (status?: OfferStatus | ''): Promise<ContentOffer[]> => {
+    const response = await api.get('/admin/content-factory/offers', {
+      params: status ? { status } : undefined,
+    })
+    return unwrapList<ContentOffer>(response.data)
+  },
+  getOffer: async (id: number): Promise<ContentOffer> => {
+    const response = await api.get<ContentOffer>(`/admin/content-factory/offers/${id}`)
+    return response.data
+  },
+  createOffer: async (data: ContentOfferCreate): Promise<ContentOffer> => {
+    const response = await api.post<ContentOffer>('/admin/content-factory/offers', data)
+    return response.data
+  },
+  updateOffer: async (id: number, data: ContentOfferCreate): Promise<ContentOffer> => {
+    const response = await api.put<ContentOffer>(`/admin/content-factory/offers/${id}`, data)
+    return response.data
+  },
+  generateOffer: async (id: number, use_llm = false): Promise<ContentOffer> => {
+    const response = await api.post<ContentOffer>(
+      `/admin/content-factory/offers/${id}/generate`,
+      { use_llm }
+    )
+    return response.data
+  },
+  publishOffer: async (id: number): Promise<ContentOffer> => {
+    const response = await api.post<ContentOffer>(
+      `/admin/content-factory/offers/${id}/publish`,
+      {}
+    )
+    return response.data
+  },
+  unpublishOffer: async (id: number): Promise<ContentOffer> => {
+    const response = await api.post<ContentOffer>(
+      `/admin/content-factory/offers/${id}/unpublish`,
+      {}
+    )
+    return response.data
+  },
+  archiveOffer: async (id: number): Promise<void> => {
+    await api.delete(`/admin/content-factory/offers/${id}`)
+  },
+  getChatMessages: async (id: number): Promise<ContentChatMessage[]> => {
+    const response = await api.get(`/admin/content-factory/offers/${id}/chat/messages`)
+    return unwrapList<ContentChatMessage>(response.data)
+  },
+  postChatMessage: async (id: number, content: string): Promise<ContentChatPostResponse> => {
+    const response = await api.post<ContentChatPostResponse>(
+      `/admin/content-factory/offers/${id}/chat/messages`,
+      { content }
+    )
+    return response.data
+  },
+}
+
 export default api
 

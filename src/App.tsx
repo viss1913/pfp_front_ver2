@@ -17,6 +17,10 @@ import AiB2c from './pages/AiB2c'
 import B2cBrainContexts from './pages/AiB2c/B2cBrainContexts'
 import B2cStageContexts from './pages/AiB2c/B2cStageContexts'
 import HomeOwners from './pages/Insurance/HomeOwners'
+import ContentFactoryIndex from './pages/ContentFactory'
+import ContentFactoryTemplates from './pages/ContentFactory/Templates'
+import ContentFactoryOffers from './pages/ContentFactory/Offers'
+import ContentFactoryOfferForm from './pages/ContentFactory/OfferForm'
 import Layout from './components/Layout'
 import SuperAdminDashboard from './pages/Admin/SuperAdminDashboard'
 import AdminUsers from './pages/Admin/Users'
@@ -66,6 +70,13 @@ function AppRoutes() {
           <Route path="sessions" element={<BotSessions />} />
         </Route>
         <Route path="settings" element={<Settings />} />
+
+        {/* Content Factory */}
+        <Route path="content-factory" element={<ContentFactoryIndex />} />
+        <Route path="content-factory/templates" element={<ContentFactoryTemplates />} />
+        <Route path="content-factory/offers" element={<ContentFactoryOffers />} />
+        <Route path="content-factory/offers/new" element={<ContentFactoryOfferForm />} />
+        <Route path="content-factory/offers/:id" element={<ContentFactoryOfferForm />} />
 
         {/* Super Admin Routes */}
         <Route path="super-admin" element={<ProtectedRoute allowNoProject><SuperAdminDashboard /></ProtectedRoute>} />

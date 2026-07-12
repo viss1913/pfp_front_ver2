@@ -15,7 +15,10 @@ import {
   Shield,
   Building2,
   ChevronDown,
-  Globe
+  Globe,
+  Factory,
+  FileCode2,
+  PackageOpen,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -51,6 +54,11 @@ export default function Layout() {
     { name: 'Настройки', href: '/settings', icon: Settings },
   ]
 
+  const contentFactoryNav = [
+    { name: 'Шаблоны', href: '/content-factory/templates', icon: FileCode2 },
+    { name: 'Офферы', href: '/content-factory/offers', icon: PackageOpen },
+  ]
+
   const superAdminNavigation = [
     { name: 'Проекты', href: '/super-admin', icon: Globe },
     { name: 'Пользователи', href: '/admin/users', icon: Shield },
@@ -74,6 +82,28 @@ export default function Layout() {
               {navigation.map((item) => {
                 const Icon = item.icon
                 const isActive = location.pathname === item.href
+                return (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${isActive
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                      }`}
+                  >
+                    <Icon className="h-5 w-5" />
+                    {item.name}
+                  </Link>
+                )
+              })}
+
+              <div className="mt-6 mb-2 flex items-center gap-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <Factory className="h-3.5 w-3.5" />
+                Фабрика контента
+              </div>
+              {contentFactoryNav.map((item) => {
+                const Icon = item.icon
+                const isActive = location.pathname.startsWith(item.href)
                 return (
                   <Link
                     key={item.name}
