@@ -1347,6 +1347,9 @@ export function getContentFactoryErrorMessage(err: unknown): string {
     if (status === 422) {
       return 'AI удалил кнопку CTA — попросите вернуть <a data-cta-slot>'
     }
+    if (status === 413) {
+      return 'Файл слишком большой для сервера (413). Картинка должна сжаться автоматически — попробуйте ещё раз или меньший файл.'
+    }
     if (status === 503) return 'IDE не настроен на backend'
     if (status === 504) return 'Таймаут генерации — повторите'
     if (status === 400) {
