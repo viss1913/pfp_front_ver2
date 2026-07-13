@@ -15,7 +15,6 @@ import {
   contentFactoryAPI,
   getContentFactoryErrorMessage,
 } from '@/lib/api'
-import { prepareMediaForUpload } from '@/lib/media-prepare'
 import { cn } from '@/lib/utils'
 
 type PreviewViewport = 'desktop' | 'tablet' | 'a4'
@@ -56,15 +55,26 @@ function StatusBadge({ status, dark }: { status: string; dark?: boolean }) {
   )
 }
 
-function guessMediaKind(file: File | { name: string; content_type?: string }): MediaFileKind {
-  const name = file.name
-  const type = 'type' in file ? file.type : file.content_type || ''
-  if (type.startsWith('image/') || /\.(png|jpe?g|webp|gif)$/i.test(name)) {
-    if (/logo/i.test(name)) return 'logo'
-    if (/hero|banner/i.test(name)) return 'hero'
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = reader.result as string
+      // data:*/*;base64,XXXX → only payload for API
+      resolve(result.includes(',') ? result.split(',')[1]! : result)
+    }
+    reader.onerror = () => reject(reader.error ?? new Error('Не удалось прочитать файл'))
+    reader.readAsDataURL(file)
+  })
+}
+
+function guessMediaKind(file: File): MediaFileKind {
+  if (file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif)$/i.test(file.name)) {
+    if (/logo/i.test(file.name)) return 'logo'
+    if (/hero|banner/i.test(file.name)) return 'hero'
     return 'logo'
   }
-  if (/\.(csv|json|xlsx?)$/i.test(name)) return 'chart_data'
+  if (/\.(csv|json|xlsx?)$/i.test(file.name)) return 'chart_data'
   return 'other'
 }
 
@@ -273,59 +283,26 @@ export default function ContentFactoryOfferForm() {
     setBusy(true)
     setError(null)
     try {
-      const list = Array.from(files)
-      const prepared = await Promise.all(
-        list.map((file) => prepareMediaForUpload(file))
+      // As-is: no client compress / size gate — backend decides
+      const uploads = await Promise.all(
+        Array.from(files).map(async (file) => ({
+          name: file.name,
+          content_base64: await fileToBase64(file),
+          content_type: file.type || 'application/octet-stream',
+          kind: guessMediaKind(file),
+        }))
       )
-
-      // Upload one-by-one — smaller JSON bodies, clearer errors
-      const allRefs: { ref: string; kind?: string; name: string }[] = []
-      for (const p of prepared) {
-        const uploaded = await contentFactoryAPI.uploadMedia(id, [
-          {
-            name: p.name,
-            content_base64: p.content_base64,
-            content_type: p.content_type,
-            kind: guessMediaKind({ name: p.name, content_type: p.content_type }),
-          },
-        ])
-        for (const f of uploaded) {
-          allRefs.push({
-            ref: f.ref || `media:${f.name}`,
-            kind: f.kind,
-            name: f.name || p.name,
-          })
-        }
-      }
-
+      const uploaded = await contentFactoryAPI.uploadMedia(id, uploads)
       setPendingAttachments((prev) => [
         ...prev,
-        ...allRefs.map((f) => ({
-          ref: f.ref,
+        ...uploaded.map((f) => ({
+          ref: f.ref || `media:${f.name}`,
           role: f.kind || 'logo',
           instruction: 'использовать во вёрстке',
         })),
       ])
-
-      const compressed = prepared.filter((p) => p.compressed)
-      if (compressed.length) {
-        const kb = (n: number) => Math.round(n / 1024)
-        console.info(
-          '[CF media]',
-          compressed
-            .map(
-              (p) =>
-                `${p.name}: ${kb(p.originalBytes)}KB → ${kb(p.resultBytes)}KB`
-            )
-            .join('; ')
-        )
-      }
     } catch (err) {
-      const msg =
-        err instanceof Error && !('isAxiosError' in err)
-          ? err.message
-          : getContentFactoryErrorMessage(err)
-      setError(msg)
+      setError(getContentFactoryErrorMessage(err))
     } finally {
       setBusy(false)
       if (fileInputRef.current) fileInputRef.current.value = ''

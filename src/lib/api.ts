@@ -1348,7 +1348,7 @@ export function getContentFactoryErrorMessage(err: unknown): string {
       return 'AI удалил кнопку CTA — попросите вернуть <a data-cta-slot>'
     }
     if (status === 413) {
-      return 'Файл слишком большой для сервера (413). Картинка должна сжаться автоматически — попробуйте ещё раз или меньший файл.'
+      return 'Сервер отклонил тело запроса (413 Request Entity Too Large). Лимит на nginx/backend, не на фронте.'
     }
     if (status === 503) return 'IDE не настроен на backend'
     if (status === 504) return 'Таймаут генерации — повторите'
