@@ -72,15 +72,15 @@ export default function Layout() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="flex h-screen">
+    <div className="h-screen overflow-hidden bg-background">
+      <div className="flex h-full min-h-0">
         {/* Sidebar */}
-        <aside className="w-64 border-r bg-card">
-          <div className="flex h-full flex-col">
-            <div className="flex h-16 items-center border-b px-6">
+        <aside className="flex w-64 shrink-0 flex-col border-r bg-card">
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="flex h-16 shrink-0 items-center border-b px-6">
               <h1 className="text-xl font-bold">PFP Admin</h1>
             </div>
-            <nav className="flex-1 space-y-1 px-3 py-4">
+            <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-4">
               {navigation.map((item) => {
                 const Icon = item.icon
                 const isActive = location.pathname === item.href
@@ -170,60 +170,74 @@ export default function Layout() {
           </div>
         </aside>
 
-        {/* Main content */}
-        <div className="flex flex-1 flex-col overflow-hidden">
-          {/* Top Header */}
-          <header className="flex h-16 items-center border-b bg-card px-8 gap-4 justify-between">
-            <div className="flex items-center gap-4">
-              {isSuperAdmin(user?.role) && activeProject && (
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                  <Building2 className="h-4 w-4" />
-                  <span>В контексте:</span>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-8 gap-2 px-3 border-primary/50 bg-primary/5">
-                        <span className="font-bold text-foreground">{activeProject.name}</span>
-                        <ChevronDown className="h-3 w-3" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-56">
-                      <DropdownMenuLabel>Переключить проект</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      {projects.map((p) => (
-                        <DropdownMenuItem
-                          key={p.id}
-                          onClick={() => handleProjectSwitch(p)}
-                          className={activeProject.id === p.id ? 'bg-accent' : ''}
-                        >
-                          <Building2 className="mr-2 h-4 w-4" />
-                          <span>{p.name}</span>
-                          {activeProject.id === p.id && <ChevronDown className="ml-auto h-3 w-3 rotate-180" />}
+        {/* Main content — min-h-0 critical for nested h-full IDE */}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          {/* Top Header — hidden in CF editor to free vertical space */}
+          {!isCfEditor && (
+            <header className="flex h-16 shrink-0 items-center justify-between gap-4 border-b bg-card px-8">
+              <div className="flex items-center gap-4">
+                {isSuperAdmin(user?.role) && activeProject && (
+                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                    <Building2 className="h-4 w-4" />
+                    <span>В контексте:</span>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-8 gap-2 border-primary/50 bg-primary/5 px-3">
+                          <span className="font-bold text-foreground">{activeProject.name}</span>
+                          <ChevronDown className="h-3 w-3" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-56">
+                        <DropdownMenuLabel>Переключить проект</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {projects.map((p) => (
+                          <DropdownMenuItem
+                            key={p.id}
+                            onClick={() => handleProjectSwitch(p)}
+                            className={activeProject.id === p.id ? 'bg-accent' : ''}
+                          >
+                            <Building2 className="mr-2 h-4 w-4" />
+                            <span>{p.name}</span>
+                            {activeProject.id === p.id && (
+                              <ChevronDown className="ml-auto h-3 w-3 rotate-180" />
+                            )}
+                          </DropdownMenuItem>
+                        ))}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => navigate('/super-admin')}>
+                          <Globe className="mr-2 h-4 w-4" />
+                          <span>Все проекты</span>
                         </DropdownMenuItem>
-                      ))}
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={() => navigate('/super-admin')}>
-                        <Globe className="mr-2 h-4 w-4" />
-                        <span>Все проекты</span>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              )}
-              {!isSuperAdmin(user?.role) && activeProject && (
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
-                  <span>Проект: <span className="font-bold">{activeProject.name}</span></span>
-                </div>
-              )}
-            </div>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                )}
+                {!isSuperAdmin(user?.role) && activeProject && (
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                    <span>
+                      Проект: <span className="font-bold">{activeProject.name}</span>
+                    </span>
+                  </div>
+                )}
+              </div>
+            </header>
+          )}
 
-            <div className="flex items-center gap-4 text-sm">
-              {/* Reserved for more header items like notifications etc */}
-            </div>
-          </header>
-
-          <main className={isCfEditor ? 'flex-1 overflow-hidden' : 'flex-1 overflow-y-auto'}>
-            <div className={isCfEditor ? 'h-full' : 'container mx-auto p-6'}>
+          <main
+            className={
+              isCfEditor
+                ? 'flex min-h-0 flex-1 flex-col overflow-hidden'
+                : 'flex-1 overflow-y-auto'
+            }
+          >
+            <div
+              className={
+                isCfEditor
+                  ? 'flex min-h-0 flex-1 flex-col overflow-hidden'
+                  : 'container mx-auto p-6'
+              }
+            >
               <Outlet />
             </div>
           </main>

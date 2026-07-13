@@ -458,9 +458,9 @@ export default function ContentFactoryOfferForm() {
 
   const hasHtml = Boolean(offer.generated_html)
 
-  // ─── IDE editor ──────────────────────────────────────────
+  // ─── IDE editor: fills parent only (Layout gives h-full min-h-0) ───
   return (
-    <div className="-m-6 flex h-[calc(100vh-4rem)] min-h-[520px] flex-col bg-[#0f1419] text-[#e5e7eb]">
+    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-[#0f1419] text-[#e5e7eb]">
       <input
         ref={fileInputRef}
         type="file"
@@ -470,54 +470,54 @@ export default function ContentFactoryOfferForm() {
         onChange={(e) => onAttachFiles(e.target.files)}
       />
 
-      {/* Top bar */}
-      <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-[#2a3344] bg-[#1a1f2e] px-4">
-        <div className="flex min-w-0 items-center gap-3">
+      {/* Top bar — single row, no wrap, scroll if needed */}
+      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-[#2a3344] bg-[#1a1f2e] px-3">
+        <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
           <Link
             to="/content-factory/offers"
             className="flex shrink-0 items-center gap-1 text-sm text-[#9ca3af] hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
-            Офферы
+            <span className="hidden sm:inline">Офферы</span>
           </Link>
           <StatusBadge status={offer.status} dark />
-          <h1 className="truncate text-sm font-semibold sm:text-base" title={offer.title}>
+          <h1 className="min-w-0 truncate text-sm font-semibold" title={offer.title}>
             {offer.title}
           </h1>
         </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 overflow-x-auto">
           <Button
             size="sm"
             variant="outline"
-            className="border-[#2a3344] bg-transparent text-[#9ca3af] hover:bg-[#121820] hover:text-white"
+            className="h-8 shrink-0 border-[#2a3344] bg-transparent px-2 text-[#9ca3af] hover:bg-[#121820] hover:text-white"
             onClick={() => load(true)}
             disabled={busy || streaming}
+            title="Sync IDE"
           >
-            <RefreshCw className="mr-1 h-3.5 w-3.5" />
-            Sync
+            <RefreshCw className="h-3.5 w-3.5" />
           </Button>
           <Button
             size="sm"
             variant="outline"
-            className="border-[#2a3344] bg-transparent text-[#c5cdd8] hover:bg-[#121820]"
-            onClick={() => setMetaOpen(true)}
+            className="h-8 shrink-0 border-[#2a3344] bg-transparent px-2.5 text-xs text-[#c5cdd8] hover:bg-[#121820]"
+            onClick={() => setMetaOpen((v) => !v)}
           >
-            Настройки CTA
+            CTA
           </Button>
           {offer.status === 'published' ? (
             <Button
               size="sm"
               variant="outline"
-              className="border-[#2a3344] bg-transparent text-white hover:bg-[#121820]"
+              className="h-8 shrink-0 border-[#2a3344] bg-transparent px-2.5 text-xs text-white hover:bg-[#121820]"
               onClick={onUnpublish}
               disabled={busy}
             >
-              Снять с публикации
+              Unpublish
             </Button>
           ) : (
             <Button
               size="sm"
-              className="bg-[#111827] text-white hover:bg-black"
+              className="h-8 shrink-0 bg-[#111827] px-3 text-xs text-white hover:bg-black"
               onClick={onPublish}
               disabled={busy || !hasHtml || offer.status === 'archived'}
             >
@@ -527,7 +527,7 @@ export default function ContentFactoryOfferForm() {
           <Button
             size="sm"
             variant="ghost"
-            className="text-red-400 hover:bg-red-950/40 hover:text-red-300"
+            className="h-8 shrink-0 px-2 text-xs text-red-400 hover:bg-red-950/40 hover:text-red-300"
             onClick={onArchive}
             disabled={busy || offer.status === 'archived'}
           >
@@ -537,23 +537,23 @@ export default function ContentFactoryOfferForm() {
       </header>
 
       {error && (
-        <div className="border-b border-red-900/50 bg-red-950/40 px-4 py-2 text-sm text-red-300">
+        <div className="shrink-0 border-b border-red-900/50 bg-red-950/40 px-3 py-1.5 text-xs text-red-300">
           {error}
         </div>
       )}
 
-      {/* Split 45/55 */}
-      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,45%)_minmax(0,55%)]">
+      {/* Split 45/55 — only this area scrolls internally */}
+      <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[minmax(0,45%)_minmax(0,55%)]">
         {/* Chat */}
-        <section className="flex min-h-[280px] flex-col border-b border-[#2a3344] bg-[#121820] lg:min-h-0 lg:border-b-0 lg:border-r">
-          <div className="border-b border-[#2a3344] px-4 py-2.5">
+        <section className="flex min-h-0 flex-col overflow-hidden border-b border-[#2a3344] bg-[#121820] lg:border-b-0 lg:border-r">
+          <div className="shrink-0 border-b border-[#2a3344] px-3 py-2">
             <h2 className="text-sm font-semibold">Чат с AI</h2>
             <p className="text-[11px] text-[#6b7280]">
               Планировщик → БА → Программист · SSE
             </p>
           </div>
 
-          <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-2">
             {messages.length === 0 && !streaming && (
               <p className="text-sm text-[#6b7280]">
                 Опишите правку или задачу — AI обновит A4-страницу.
@@ -629,11 +629,11 @@ export default function ContentFactoryOfferForm() {
           </div>
 
           {pendingAttachments.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 border-t border-[#2a3344] px-3 py-2">
+            <div className="flex shrink-0 flex-wrap gap-1.5 border-t border-[#2a3344] px-3 py-1.5">
               {pendingAttachments.map((a) => (
                 <span
                   key={a.ref}
-                  className="inline-flex items-center gap-1 rounded-md border border-[#2a3344] bg-[#0a0e14] px-2 py-1 text-xs"
+                  className="inline-flex items-center gap-1 rounded-md border border-[#2a3344] bg-[#0a0e14] px-2 py-0.5 text-xs"
                 >
                   📎 {a.ref.replace(/^media:/, '')}
                   <button
@@ -650,19 +650,19 @@ export default function ContentFactoryOfferForm() {
             </div>
           )}
 
-          <div className="flex items-end gap-2 border-t border-[#2a3344] p-3">
+          <div className="flex shrink-0 items-end gap-2 border-t border-[#2a3344] p-2">
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={busy || streaming}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#2a3344] text-[#9ca3af] hover:bg-[#1e2633] hover:text-white disabled:opacity-40"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[#2a3344] text-[#9ca3af] hover:bg-[#1e2633] hover:text-white disabled:opacity-40"
               title="Прикрепить файл"
             >
               <Paperclip className="h-4 w-4" />
             </button>
             <textarea
-              className="min-h-[40px] max-h-32 flex-1 resize-y rounded-lg border border-[#2a3344] bg-[#0a0e14] px-3 py-2 text-sm text-[#e5e7eb] placeholder:text-[#6b7280] focus:border-indigo-500 focus:outline-none disabled:opacity-50"
-              rows={2}
+              className="max-h-24 min-h-[36px] flex-1 resize-none rounded-lg border border-[#2a3344] bg-[#0a0e14] px-3 py-2 text-sm text-[#e5e7eb] placeholder:text-[#6b7280] focus:border-indigo-500 focus:outline-none disabled:opacity-50"
+              rows={1}
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               onKeyDown={(e) => {
@@ -678,17 +678,17 @@ export default function ContentFactoryOfferForm() {
               type="button"
               onClick={onSendChat}
               disabled={busy || streaming || !chatInput.trim()}
-              className="flex h-10 shrink-0 items-center gap-1 rounded-lg bg-indigo-600 px-4 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-40"
+              className="flex h-9 shrink-0 items-center gap-1 rounded-lg bg-indigo-600 px-3 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-40"
             >
               {streaming ? '…' : <Send className="h-4 w-4" />}
-              {!streaming && 'Отправить'}
+              <span className="hidden sm:inline">{!streaming && 'Отправить'}</span>
             </button>
           </div>
         </section>
 
         {/* Preview */}
-        <section className="flex min-h-[320px] flex-col bg-[#0a0e14] lg:min-h-0">
-          <div className="flex items-center justify-between border-b border-[#2a3344] px-3 py-2">
+        <section className="flex min-h-0 flex-col overflow-hidden bg-[#0a0e14]">
+          <div className="flex shrink-0 items-center justify-between border-b border-[#2a3344] px-3 py-1.5">
             <span className="text-xs font-medium uppercase tracking-wide text-[#6b7280]">
               Preview
             </span>
@@ -699,7 +699,7 @@ export default function ContentFactoryOfferForm() {
                   type="button"
                   onClick={() => setViewport(v)}
                   className={cn(
-                    'rounded-md px-2.5 py-1 text-xs font-medium capitalize transition-colors',
+                    'rounded-md px-2 py-0.5 text-xs font-medium capitalize transition-colors',
                     viewport === v
                       ? 'bg-[#2a3344] text-white'
                       : 'text-[#9ca3af] hover:text-white'
@@ -710,26 +710,27 @@ export default function ContentFactoryOfferForm() {
               ))}
             </div>
           </div>
-          <div className="flex min-h-0 flex-1 items-start justify-center overflow-auto p-4">
+          <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-3">
             {!hasHtml ? (
-              <div className="flex h-full min-h-[240px] w-full items-center justify-center rounded-lg border border-dashed border-[#2a3344] text-sm text-[#6b7280]">
+              <div className="flex h-full w-full items-center justify-center rounded-lg border border-dashed border-[#2a3344] text-sm text-[#6b7280]">
                 Создайте оффер или отправьте первую правку в чат
               </div>
             ) : (
               <div
                 className={cn(
                   'overflow-hidden bg-white shadow-2xl shadow-black/40',
-                  viewport === 'a4' ? 'rounded-sm' : 'h-full rounded-lg'
+                  viewport === 'a4' ? 'rounded-sm' : 'h-full max-h-full rounded-lg'
                 )}
                 style={
                   viewport === 'desktop'
                     ? { width: '100%', maxWidth: 1280, height: '100%' }
                     : viewport === 'tablet'
-                      ? { width: 768, maxWidth: '100%', height: '100%' }
+                      ? { width: 'min(100%, 768px)', height: '100%' }
                       : {
-                          width: 'min(100%, 420px)',
-                          aspectRatio: '210 / 297',
+                          width: 'min(100%, 380px)',
+                          height: '100%',
                           maxHeight: '100%',
+                          aspectRatio: '210 / 297',
                         }
                 }
               >
@@ -738,7 +739,6 @@ export default function ContentFactoryOfferForm() {
                   sandbox="allow-same-origin"
                   srcDoc={offer.generated_html || ''}
                   className="h-full w-full border-0 bg-white"
-                  style={viewport === 'a4' ? { minHeight: '100%' } : { minHeight: 480 }}
                 />
               </div>
             )}
@@ -746,78 +746,80 @@ export default function ContentFactoryOfferForm() {
         </section>
       </div>
 
-      {/* Meta collapsible */}
-      <div className="border-t border-[#2a3344] bg-[#0f1419]">
+      {/* Meta — capped height so it never pushes editor off-screen */}
+      <div className="shrink-0 border-t border-[#2a3344] bg-[#0f1419]">
         <button
           type="button"
           onClick={() => setMetaOpen((v) => !v)}
-          className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm font-medium text-[#c5cdd8] hover:bg-[#121820]"
+          className="flex h-9 w-full items-center justify-between px-3 text-left text-xs font-medium text-[#c5cdd8] hover:bg-[#121820]"
         >
-          <span>▼ Настройки оффера</span>
-          <span className="text-xs text-[#6b7280]">
+          <span>{metaOpen ? '▲' : '▼'} Настройки оффера (CTA, срок, brief)</span>
+          <span className="text-[10px] text-[#6b7280]">
             {metaOpen ? 'свернуть' : 'развернуть'}
           </span>
         </button>
         {metaOpen && (
-          <div className="grid gap-3 border-t border-[#2a3344] px-4 py-3 sm:grid-cols-2 lg:grid-cols-3">
-            <div>
-              <label className="mb-1 block text-xs text-[#6b7280]">Title</label>
-              <input
-                className="w-full rounded-lg border border-[#2a3344] bg-[#0a0e14] px-3 py-2 text-sm"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs text-[#6b7280]">Kind</label>
-              <input
-                className="w-full rounded-lg border border-[#2a3344] bg-[#0a0e14] px-3 py-2 text-sm"
-                value={kind}
-                onChange={(e) => setKind(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs text-[#6b7280]">CTA URL</label>
-              <input
-                className="w-full rounded-lg border border-[#2a3344] bg-[#0a0e14] px-3 py-2 text-sm"
-                value={ctaUrl}
-                onChange={(e) => setCtaUrl(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs text-[#6b7280]">CTA label</label>
-              <input
-                className="w-full rounded-lg border border-[#2a3344] bg-[#0a0e14] px-3 py-2 text-sm"
-                value={ctaLabel}
-                onChange={(e) => setCtaLabel(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs text-[#6b7280]">Срок</label>
-              <input
-                type="datetime-local"
-                className="w-full rounded-lg border border-[#2a3344] bg-[#0a0e14] px-3 py-2 text-sm"
-                value={expiresAt}
-                onChange={(e) => setExpiresAt(e.target.value)}
-              />
-            </div>
-            <div className="sm:col-span-2 lg:col-span-3">
-              <label className="mb-1 block text-xs text-[#6b7280]">Brief</label>
-              <textarea
-                className="min-h-[64px] w-full rounded-lg border border-[#2a3344] bg-[#0a0e14] px-3 py-2 text-sm"
-                value={brief}
-                onChange={(e) => setBrief(e.target.value)}
-              />
-            </div>
-            <div>
-              <Button
-                size="sm"
-                className="bg-[#1e2633] text-white hover:bg-[#2a3344]"
-                onClick={onSaveMeta}
-                disabled={busy}
-              >
-                {busy ? 'Сохранение…' : 'Сохранить настройки'}
-              </Button>
+          <div className="max-h-[28vh] overflow-y-auto border-t border-[#2a3344] px-3 py-2">
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              <div>
+                <label className="mb-0.5 block text-[11px] text-[#6b7280]">Title</label>
+                <input
+                  className="w-full rounded-md border border-[#2a3344] bg-[#0a0e14] px-2 py-1.5 text-sm"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="mb-0.5 block text-[11px] text-[#6b7280]">Kind</label>
+                <input
+                  className="w-full rounded-md border border-[#2a3344] bg-[#0a0e14] px-2 py-1.5 text-sm"
+                  value={kind}
+                  onChange={(e) => setKind(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="mb-0.5 block text-[11px] text-[#6b7280]">CTA URL</label>
+                <input
+                  className="w-full rounded-md border border-[#2a3344] bg-[#0a0e14] px-2 py-1.5 text-sm"
+                  value={ctaUrl}
+                  onChange={(e) => setCtaUrl(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="mb-0.5 block text-[11px] text-[#6b7280]">CTA label</label>
+                <input
+                  className="w-full rounded-md border border-[#2a3344] bg-[#0a0e14] px-2 py-1.5 text-sm"
+                  value={ctaLabel}
+                  onChange={(e) => setCtaLabel(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="mb-0.5 block text-[11px] text-[#6b7280]">Срок</label>
+                <input
+                  type="datetime-local"
+                  className="w-full rounded-md border border-[#2a3344] bg-[#0a0e14] px-2 py-1.5 text-sm"
+                  value={expiresAt}
+                  onChange={(e) => setExpiresAt(e.target.value)}
+                />
+              </div>
+              <div className="sm:col-span-2 lg:col-span-3">
+                <label className="mb-0.5 block text-[11px] text-[#6b7280]">Brief</label>
+                <textarea
+                  className="max-h-20 min-h-[40px] w-full rounded-md border border-[#2a3344] bg-[#0a0e14] px-2 py-1.5 text-sm"
+                  value={brief}
+                  onChange={(e) => setBrief(e.target.value)}
+                />
+              </div>
+              <div>
+                <Button
+                  size="sm"
+                  className="h-8 bg-[#1e2633] text-white hover:bg-[#2a3344]"
+                  onClick={onSaveMeta}
+                  disabled={busy}
+                >
+                  {busy ? 'Сохранение…' : 'Сохранить'}
+                </Button>
+              </div>
             </div>
           </div>
         )}
