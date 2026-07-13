@@ -1,0 +1,585 @@
+openapi: 3.0.3
+info:
+  title: PFP Content Factory API
+  version: 1.0.0
+  description: |
+    Content Factory (IDE integration) — admin создаёт HTML-офферы через чат + IDE API,
+    агенты собирают презентации → PDF + email с utm_agent.
+
+    **Base URL:** `https://pfp-api.bank-future.com/api`
+
+    **Auth:** Bearer JWT + header `x-project-key` (admin и agent LK).
+
+    **Admin:** роли `admin`, `super_admin`.
+    **Agent LK:** роли `agent`, `admin`, `super_admin`.
+
+    Handoff backend: `backend PFP/docs/integrations/ide-content-html/`
+
+servers:
+  - url: https://pfp-api.bank-future.com/api
+    description: Production (Immers)
+  - url: /api
+    description: Relative (local proxy)
+
+tags:
+  - name: ContentFactoryAdmin
+    description: Admin — offers, chat (SSE), media, publish
+  - name: ContentFactoryAgent
+    description: Agent LK — catalog, presentations, PDF, email
+
+paths:
+  /admin/content-factory/health/ide:
+    get:
+      tags: [ContentFactoryAdmin]
+      summary: IDE Content HTML API health (proxy smoke)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/XProjectKey'
+      responses:
+        '200':
+          description: IDE health JSON
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  service: { type: string }
+                  version: { type: string }
+                  llm: { type: string }
+                  grokTerminal: { type: boolean }
+
+  /admin/content-factory/offers:
+    get:
+      tags: [ContentFactoryAdmin]
+      summary: List offers (project)
+      parameters:
+        - $ref: '#/components/parameters/XProjectKey'
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, published, archived]
+        - name: include_expired
+          in: query
+          schema:
+            type: string
+            enum: ['0', '1']
+            default: '1'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ContentOffer'
+    post:
+      tags: [ContentFactoryAdmin]
+      summary: Create offer + IDE session
+      parameters:
+        - $ref: '#/components/parameters/XProjectKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentOfferCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentOffer'
+
+  /admin/content-factory/offers/{id}:
+    get:
+      tags: [ContentFactoryAdmin]
+      summary: Get offer
+      parameters:
+        - $ref: '#/components/parameters/XProjectKey'
+        - $ref: '#/components/parameters/IdPath'
+        - name: sync
+          in: query
+          description: Pull latest html from IDE session
+          schema:
+            type: string
+            enum: ['1']
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentOffer'
+    patch:
+      tags: [ContentFactoryAdmin]
+      summary: Update offer metadata (not generated_html)
+      parameters:
+        - $ref: '#/components/parameters/XProjectKey'
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentOfferPatch'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentOffer'
+    delete:
+      tags: [ContentFactoryAdmin]
+      summary: Archive offer
+      parameters:
+        - $ref: '#/components/parameters/XProjectKey'
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Archived offer
+
+  /admin/content-factory/offers/{id}/publish:
+    post:
+      tags: [ContentFactoryAdmin]
+      summary: Publish to agent catalog
+      parameters:
+        - $ref: '#/components/parameters/XProjectKey'
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentOffer'
+        '422':
+          description: Missing CTA slot or HTML
+
+  /admin/content-factory/offers/{id}/unpublish:
+    post:
+      tags: [ContentFactoryAdmin]
+      summary: Return offer to draft
+      parameters:
+        - $ref: '#/components/parameters/XProjectKey'
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentOffer'
+
+  /admin/content-factory/offers/{id}/chat/messages:
+    get:
+      tags: [ContentFactoryAdmin]
+      summary: Chat history
+      parameters:
+        - $ref: '#/components/parameters/XProjectKey'
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ChatMessage'
+    post:
+      tags: [ContentFactoryAdmin]
+      summary: Chat turn — JSON or SSE (stream=1)
+      description: |
+        **SSE:** `?stream=1` + `Accept: text/event-stream`
+        Events: hello → progress* → result → done | error
+      parameters:
+        - $ref: '#/components/parameters/XProjectKey'
+        - $ref: '#/components/parameters/IdPath'
+        - name: stream
+          in: query
+          schema:
+            type: string
+            enum: ['1']
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentOfferChatRequest'
+      responses:
+        '200':
+          description: JSON (no stream) or text/event-stream
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatPostResponse'
+            text/event-stream:
+              schema:
+                type: string
+                description: SSE events (hello, progress, result, done, error)
+
+  /admin/content-factory/offers/{id}/media:
+    get:
+      tags: [ContentFactoryAdmin]
+      summary: List media files (IDE session)
+      parameters:
+        - $ref: '#/components/parameters/XProjectKey'
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaListResponse'
+    post:
+      tags: [ContentFactoryAdmin]
+      summary: Upload media (base64)
+      parameters:
+        - $ref: '#/components/parameters/XProjectKey'
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MediaUploadRequest'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MediaUploadResponse'
+
+  /pfp/content-factory/offers:
+    get:
+      tags: [ContentFactoryAgent]
+      summary: Published catalog (not expired)
+      parameters:
+        - $ref: '#/components/parameters/XProjectKey'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ContentOffer'
+
+  /pfp/content-factory/offers/{id}:
+    get:
+      tags: [ContentFactoryAgent]
+      summary: Get published offer
+      parameters:
+        - $ref: '#/components/parameters/XProjectKey'
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentOffer'
+
+  /pfp/content-factory/presentations:
+    get:
+      tags: [ContentFactoryAgent]
+      summary: List agent presentations
+      parameters:
+        - $ref: '#/components/parameters/XProjectKey'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AgentPresentation'
+    post:
+      tags: [ContentFactoryAgent]
+      summary: Create presentation (deck)
+      parameters:
+        - $ref: '#/components/parameters/XProjectKey'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentPresentationCreate'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentPresentation'
+
+  /pfp/content-factory/presentations/{id}:
+    get:
+      tags: [ContentFactoryAgent]
+      parameters:
+        - $ref: '#/components/parameters/XProjectKey'
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentPresentation'
+    patch:
+      tags: [ContentFactoryAgent]
+      parameters:
+        - $ref: '#/components/parameters/XProjectKey'
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentPresentationPatch'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentPresentation'
+
+  /pfp/content-factory/presentations/{id}/pdf:
+    post:
+      tags: [ContentFactoryAgent]
+      summary: Generate PDF (base64 or download=1)
+      parameters:
+        - $ref: '#/components/parameters/XProjectKey'
+        - $ref: '#/components/parameters/IdPath'
+        - name: download
+          in: query
+          schema:
+            type: string
+            enum: ['1']
+      responses:
+        '200':
+          description: JSON with pdf_base64 or application/pdf
+
+  /pfp/content-factory/presentations/{id}/email-draft:
+    post:
+      tags: [ContentFactoryAgent]
+      summary: Generate email subject/body template
+      parameters:
+        - $ref: '#/components/parameters/XProjectKey'
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentPresentation'
+
+  /pfp/content-factory/presentations/{id}/send:
+    post:
+      tags: [ContentFactoryAgent]
+      summary: Send presentation PDF via email
+      parameters:
+        - $ref: '#/components/parameters/XProjectKey'
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                to:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Sent
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    XProjectKey:
+      name: x-project-key
+      in: header
+      required: true
+      schema:
+        type: string
+      description: Project tenant key (e.g. pk_default_pfp_2026 on test)
+    IdPath:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+
+  schemas:
+    OfferStatus:
+      type: string
+      enum: [draft, published, archived]
+
+    ContentOffer:
+      type: object
+      properties:
+        id: { type: integer }
+        project_id: { type: integer }
+        title: { type: string }
+        kind: { type: string, example: product }
+        brief: { type: string, nullable: true }
+        ide_session_id: { type: string, format: uuid, nullable: true }
+        cta_url_base: { type: string, nullable: true }
+        cta_label: { type: string, nullable: true }
+        generated_html: { type: string, nullable: true }
+        status: { $ref: '#/components/schemas/OfferStatus' }
+        expires_at: { type: string, format: date-time, nullable: true }
+        published_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    ContentOfferCreate:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string }
+        brief: { type: string, nullable: true }
+        kind: { type: string, default: product }
+        cta_url_base: { type: string }
+        cta_label: { type: string }
+        expires_at: { type: string, format: date-time }
+        generate:
+          type: boolean
+          description: Default true when brief is set; false = A4 template only
+
+    ContentOfferPatch:
+      type: object
+      properties:
+        title: { type: string }
+        brief: { type: string }
+        kind: { type: string }
+        cta_url_base: { type: string }
+        cta_label: { type: string }
+        expires_at: { type: string, format: date-time, nullable: true }
+
+    ChatMessage:
+      type: object
+      properties:
+        id: { type: integer }
+        role: { type: string, enum: [user, assistant, system] }
+        content: { type: string }
+        created_at: { type: string, format: date-time }
+
+    ContentOfferChatRequest:
+      type: object
+      required: [content]
+      properties:
+        content: { type: string, maxLength: 8000 }
+        attachments:
+          type: array
+          items:
+            type: object
+            properties:
+              ref: { type: string, example: 'media:logo.png' }
+              role: { type: string, example: logo }
+              instruction: { type: string }
+        files:
+          type: array
+          description: Inline upload (same shape as media upload)
+
+    ChatPostResponse:
+      type: object
+      properties:
+        offer: { $ref: '#/components/schemas/ContentOffer' }
+        messages:
+          type: array
+          items: { $ref: '#/components/schemas/ChatMessage' }
+        preview_html: { type: string }
+        assistant_message: { type: string }
+        validation:
+          type: object
+          properties:
+            cta_slot_present: { type: boolean }
+
+    MediaUploadRequest:
+      type: object
+      required: [files]
+      properties:
+        files:
+          type: array
+          maxItems: 8
+          items:
+            type: object
+            required: [name, content_base64]
+            properties:
+              name: { type: string }
+              content_base64: { type: string }
+              content_type: { type: string }
+              kind:
+                type: string
+                enum: [logo, hero, icon, chart_data, text, other]
+
+    MediaUploadResponse:
+      type: object
+      properties:
+        ok: { type: boolean }
+        files:
+          type: array
+          items:
+            type: object
+            properties:
+              ref: { type: string }
+              name: { type: string }
+              content_type: { type: string }
+              kind: { type: string }
+
+    MediaListResponse:
+      type: object
+      properties:
+        files:
+          type: array
+          items:
+            type: object
+            properties:
+              ref: { type: string }
+              name: { type: string }
+              content_type: { type: string }
+              kind: { type: string }
+
+    AgentPresentation:
+      type: object
+      properties:
+        id: { type: integer }
+        project_id: { type: integer }
+        agent_id: { type: integer }
+        title: { type: string }
+        offer_ids:
+          type: array
+          items: { type: integer }
+        status: { type: string, enum: [draft, ready, sent] }
+        recipient_client_id: { type: integer, nullable: true }
+        email_subject: { type: string, nullable: true }
+        email_body: { type: string, nullable: true }
+        pdf_html_snapshot: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    AgentPresentationCreate:
+      type: object
+      required: [offer_ids]
+      properties:
+        title: { type: string }
+        offer_ids:
+          type: array
+          items: { type: integer }
+          minItems: 1
+        recipient_client_id: { type: integer }
+
+    AgentPresentationPatch:
+      type: object
+      properties:
+        title: { type: string }
+        offer_ids:
+          type: array
+          items: { type: integer }
+        recipient_client_id: { type: integer }
+        email_subject: { type: string }
+        email_body: { type: string }
+
+security:
+  - bearerAuth: []
