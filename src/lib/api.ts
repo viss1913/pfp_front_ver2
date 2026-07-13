@@ -1184,11 +1184,21 @@ export const adminManagementAPI = {
   },
 }
 
-// --- Content Factory (admin) ---
-// Headers JWT + X-Project-Key already via interceptor (localStorage token / project_key)
+// --- Content Factory (admin) IDE v1 ---
+// Headers JWT + X-Project-Key via interceptor (localStorage token / project_key)
+// Spec: docs / OpenAPI Content Factory v1 (brief + chat SSE + media)
 
 export type OfferStatus = 'draft' | 'published' | 'archived'
 
+export type IdeAgentId = 'orchestrator' | 'site_architect' | 'code_generator'
+
+export const IDE_AGENT_LABELS: Record<string, string> = {
+  orchestrator: 'Планировщик',
+  site_architect: 'Бизнес-аналитик',
+  code_generator: 'Программист',
+}
+
+/** @deprecated templates API removed in CF v1 — kept for type compatibility */
 export interface ContentTemplate {
   id: number
   project_id: number
@@ -1211,10 +1221,10 @@ export interface ContentTemplateCreate {
 export interface ContentOffer {
   id: number
   project_id: number
-  template_id?: number | null
   title: string
   kind: string
-  payload: Record<string, unknown>
+  brief?: string | null
+  ide_session_id?: string | null
   cta_url_base?: string | null
   cta_label?: string | null
   generated_html?: string | null
@@ -1223,16 +1233,34 @@ export interface ContentOffer {
   published_at?: string | null
   created_at?: string
   updated_at?: string
+  // legacy optional fields (v0.1)
+  template_id?: number | null
+  payload?: Record<string, unknown>
 }
 
 export interface ContentOfferCreate {
   title: string
+  brief?: string | null
   kind?: string
-  template_id?: number | null
-  payload?: Record<string, unknown>
   cta_url_base?: string | null
   cta_label?: string | null
   expires_at?: string | null
+  generate?: boolean
+}
+
+export interface ContentOfferPatch {
+  title?: string
+  brief?: string | null
+  kind?: string
+  cta_url_base?: string | null
+  cta_label?: string | null
+  expires_at?: string | null
+}
+
+export interface ContentChatAttachment {
+  ref: string
+  role?: string
+  instruction?: string
 }
 
 export interface ContentChatMessage {
@@ -1240,11 +1268,60 @@ export interface ContentChatMessage {
   role: 'user' | 'assistant' | 'system'
   content: string
   created_at?: string
+  attachments?: ContentChatAttachment[]
+}
+
+export interface ContentChatRequest {
+  content: string
+  attachments?: ContentChatAttachment[]
 }
 
 export interface ContentChatPostResponse {
-  offer: ContentOffer
-  messages: ContentChatMessage[]
+  offer?: ContentOffer
+  messages?: ContentChatMessage[]
+  preview_html?: string
+  assistant_message?: string
+  validation?: { cta_slot_present?: boolean }
+}
+
+export type MediaFileKind = 'logo' | 'hero' | 'icon' | 'chart_data' | 'text' | 'other'
+
+export interface MediaUploadFile {
+  name: string
+  content_base64: string
+  content_type?: string
+  kind?: MediaFileKind
+}
+
+export interface MediaFileRef {
+  ref: string
+  name: string
+  content_type?: string
+  kind?: string
+}
+
+export interface SseProgressEvent {
+  agent?: IdeAgentId | string
+  message?: string
+  status?: string
+}
+
+export interface SseResultEvent {
+  html?: string
+  assistant_message?: string
+}
+
+export interface SseErrorEvent {
+  error?: string
+  message?: string
+}
+
+export type ChatStreamHandlers = {
+  onHello?: () => void
+  onProgress?: (event: SseProgressEvent) => void
+  onResult?: (event: SseResultEvent) => void
+  onDone?: () => void
+  onError?: (event: SseErrorEvent) => void
 }
 
 function unwrapList<T>(data: unknown): T[] {
@@ -1254,6 +1331,7 @@ function unwrapList<T>(data: unknown): T[] {
     if (Array.isArray(obj.items)) return obj.items as T[]
     if (Array.isArray(obj.results)) return obj.results as T[]
     if (Array.isArray(obj.data)) return obj.data as T[]
+    if (Array.isArray(obj.files)) return obj.files as T[]
   }
   return []
 }
@@ -1267,8 +1345,10 @@ export function getContentFactoryErrorMessage(err: unknown): string {
       | undefined
 
     if (status === 422) {
-      return 'AI удалил кнопку CTA, повторите запрос'
+      return 'AI удалил кнопку CTA — попросите вернуть <a data-cta-slot>'
     }
+    if (status === 503) return 'IDE не настроен на backend'
+    if (status === 504) return 'Таймаут генерации — повторите'
     if (status === 400) {
       if (typeof data?.detail === 'string') return data.detail
       return data?.message || data?.error || 'Некорректный запрос (400)'
@@ -1288,52 +1368,68 @@ export function getContentFactoryErrorMessage(err: unknown): string {
   return 'Неизвестная ошибка'
 }
 
-export const contentFactoryAPI = {
-  // Templates
-  listTemplates: async (): Promise<ContentTemplate[]> => {
-    const response = await api.get('/admin/content-factory/templates')
-    return unwrapList<ContentTemplate>(response.data)
-  },
-  getTemplate: async (id: number): Promise<ContentTemplate> => {
-    const response = await api.get<ContentTemplate>(`/admin/content-factory/templates/${id}`)
-    return response.data
-  },
-  createTemplate: async (data: ContentTemplateCreate): Promise<ContentTemplate> => {
-    const response = await api.post<ContentTemplate>('/admin/content-factory/templates', data)
-    return response.data
-  },
-  updateTemplate: async (id: number, data: ContentTemplateCreate): Promise<ContentTemplate> => {
-    const response = await api.put<ContentTemplate>(`/admin/content-factory/templates/${id}`, data)
-    return response.data
-  },
-  deleteTemplate: async (id: number): Promise<void> => {
-    await api.delete(`/admin/content-factory/templates/${id}`)
-  },
+function parseSseChunk(buffer: string, handlers: ChatStreamHandlers): string {
+  const parts = buffer.split('\n\n')
+  const rest = parts.pop() ?? ''
+  for (const block of parts) {
+    if (!block.trim()) continue
+    let eventName = 'message'
+    const dataLines: string[] = []
+    for (const line of block.split('\n')) {
+      if (line.startsWith('event:')) eventName = line.slice(6).trim()
+      else if (line.startsWith('data:')) dataLines.push(line.slice(5).trim())
+    }
+    const raw = dataLines.join('\n')
+    let data: Record<string, unknown> = {}
+    if (raw) {
+      try {
+        data = JSON.parse(raw) as Record<string, unknown>
+      } catch {
+        data = { message: raw }
+      }
+    }
+    switch (eventName) {
+      case 'hello':
+        handlers.onHello?.()
+        break
+      case 'progress':
+        handlers.onProgress?.(data as SseProgressEvent)
+        break
+      case 'result':
+        handlers.onResult?.(data as SseResultEvent)
+        break
+      case 'done':
+        handlers.onDone?.()
+        break
+      case 'error':
+        handlers.onError?.(data as SseErrorEvent)
+        break
+      default:
+        break
+    }
+  }
+  return rest
+}
 
-  // Offers
+export const contentFactoryAPI = {
   listOffers: async (status?: OfferStatus | ''): Promise<ContentOffer[]> => {
     const response = await api.get('/admin/content-factory/offers', {
       params: status ? { status } : undefined,
     })
     return unwrapList<ContentOffer>(response.data)
   },
-  getOffer: async (id: number): Promise<ContentOffer> => {
-    const response = await api.get<ContentOffer>(`/admin/content-factory/offers/${id}`)
+  getOffer: async (id: number, opts?: { sync?: boolean }): Promise<ContentOffer> => {
+    const response = await api.get<ContentOffer>(`/admin/content-factory/offers/${id}`, {
+      params: opts?.sync ? { sync: '1' } : undefined,
+    })
     return response.data
   },
   createOffer: async (data: ContentOfferCreate): Promise<ContentOffer> => {
     const response = await api.post<ContentOffer>('/admin/content-factory/offers', data)
     return response.data
   },
-  updateOffer: async (id: number, data: ContentOfferCreate): Promise<ContentOffer> => {
-    const response = await api.put<ContentOffer>(`/admin/content-factory/offers/${id}`, data)
-    return response.data
-  },
-  generateOffer: async (id: number, use_llm = false): Promise<ContentOffer> => {
-    const response = await api.post<ContentOffer>(
-      `/admin/content-factory/offers/${id}/generate`,
-      { use_llm }
-    )
+  patchOffer: async (id: number, data: ContentOfferPatch): Promise<ContentOffer> => {
+    const response = await api.patch<ContentOffer>(`/admin/content-factory/offers/${id}`, data)
     return response.data
   },
   publishOffer: async (id: number): Promise<ContentOffer> => {
@@ -1357,11 +1453,89 @@ export const contentFactoryAPI = {
     const response = await api.get(`/admin/content-factory/offers/${id}/chat/messages`)
     return unwrapList<ContentChatMessage>(response.data)
   },
-  postChatMessage: async (id: number, content: string): Promise<ContentChatPostResponse> => {
+  postChatMessage: async (
+    id: number,
+    body: ContentChatRequest
+  ): Promise<ContentChatPostResponse> => {
     const response = await api.post<ContentChatPostResponse>(
       `/admin/content-factory/offers/${id}/chat/messages`,
-      { content }
+      body
     )
+    return response.data
+  },
+  postChatMessageStream: async (
+    id: number,
+    body: ContentChatRequest,
+    handlers: ChatStreamHandlers
+  ): Promise<void> => {
+    const token = localStorage.getItem('token')
+    const projectKey = localStorage.getItem('project_key')
+    const url = `${API_BASE_URL}/admin/content-factory/offers/${id}/chat/messages?stream=1`
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(projectKey ? { 'X-Project-Key': projectKey } : {}),
+      },
+      body: JSON.stringify(body),
+    })
+
+    if (!res.ok) {
+      let message = `HTTP ${res.status}`
+      try {
+        const errBody = await res.json()
+        if (res.status === 422) {
+          message = 'AI удалил кнопку CTA — попросите вернуть <a data-cta-slot>'
+        } else if (res.status === 503) message = 'IDE не настроен на backend'
+        else if (res.status === 504) message = 'Таймаут генерации — повторите'
+        else if (typeof errBody?.detail === 'string') message = errBody.detail
+        else if (errBody?.message) message = errBody.message
+      } catch {
+        /* ignore */
+      }
+      handlers.onError?.({ error: String(res.status), message })
+      throw new Error(message)
+    }
+
+    if (!res.body) {
+      const message = 'Пустой SSE stream'
+      handlers.onError?.({ message })
+      throw new Error(message)
+    }
+
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      buffer = parseSseChunk(buffer, handlers)
+    }
+    if (buffer.trim()) parseSseChunk(buffer + '\n\n', handlers)
+    handlers.onDone?.()
+  },
+  listMedia: async (id: number): Promise<MediaFileRef[]> => {
+    const response = await api.get(`/admin/content-factory/offers/${id}/media`)
+    if (response.data && Array.isArray(response.data.files)) {
+      return response.data.files
+    }
+    return unwrapList<MediaFileRef>(response.data)
+  },
+  uploadMedia: async (
+    id: number,
+    files: MediaUploadFile[]
+  ): Promise<MediaFileRef[]> => {
+    const response = await api.post(`/admin/content-factory/offers/${id}/media`, { files })
+    if (response.data && Array.isArray(response.data.files)) {
+      return response.data.files
+    }
+    return unwrapList<MediaFileRef>(response.data)
+  },
+  healthIde: async (): Promise<Record<string, unknown>> => {
+    const response = await api.get('/admin/content-factory/health/ide')
     return response.data
   },
 }

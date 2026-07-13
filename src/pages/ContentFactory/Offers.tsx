@@ -21,10 +21,16 @@ import { cn } from '@/lib/utils'
 
 const FILTERS: { value: OfferStatus | ''; label: string }[] = [
   { value: '', label: 'Все' },
-  { value: 'draft', label: 'Draft' },
-  { value: 'published', label: 'Published' },
-  { value: 'archived', label: 'Archived' },
+  { value: 'draft', label: 'Черновики' },
+  { value: 'published', label: 'Опубликованные' },
+  { value: 'archived', label: 'Архив' },
 ]
+
+const STATUS_LABEL: Record<OfferStatus, string> = {
+  draft: 'Черновик',
+  published: 'Опубликован',
+  archived: 'Архив',
+}
 
 function formatDate(iso?: string | null) {
   if (!iso) return '—'
@@ -45,13 +51,13 @@ function isExpiringSoon(expiresAt?: string | null) {
 
 function StatusBadge({ status }: { status: OfferStatus }) {
   const map: Record<OfferStatus, string> = {
-    draft: 'bg-gray-100 text-gray-800',
+    draft: 'bg-amber-100 text-amber-900',
     published: 'bg-green-100 text-green-800',
     archived: 'bg-orange-100 text-orange-800',
   }
   return (
     <span className={cn('inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium', map[status])}>
-      {status}
+      {STATUS_LABEL[status]}
     </span>
   )
 }
@@ -61,6 +67,7 @@ export default function ContentFactoryOffers() {
   const [items, setItems] = useState<ContentOffer[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [busyId, setBusyId] = useState<number | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -79,6 +86,50 @@ export default function ContentFactoryOffers() {
     load()
   }, [load])
 
+  const onPublish = async (o: ContentOffer) => {
+    if (!o.generated_html) {
+      setError('Нет HTML — откройте редактор и сгенерируйте через чат')
+      return
+    }
+    setBusyId(o.id)
+    setError(null)
+    try {
+      await contentFactoryAPI.publishOffer(o.id)
+      await load()
+    } catch (err) {
+      setError(getContentFactoryErrorMessage(err))
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const onUnpublish = async (o: ContentOffer) => {
+    setBusyId(o.id)
+    setError(null)
+    try {
+      await contentFactoryAPI.unpublishOffer(o.id)
+      await load()
+    } catch (err) {
+      setError(getContentFactoryErrorMessage(err))
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const onArchive = async (o: ContentOffer) => {
+    if (!window.confirm(`Архивировать «${o.title}»?`)) return
+    setBusyId(o.id)
+    setError(null)
+    try {
+      await contentFactoryAPI.archiveOffer(o.id)
+      await load()
+    } catch (err) {
+      setError(getContentFactoryErrorMessage(err))
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -87,7 +138,7 @@ export default function ContentFactoryOffers() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Офферы</h1>
             <p className="text-sm text-muted-foreground">
-              Draft → generate → AI-чат → publish
+              Brief + чат с AI → preview A4 → publish в каталог агентов
             </p>
           </div>
         </div>
@@ -98,7 +149,7 @@ export default function ContentFactoryOffers() {
           <Button asChild>
             <Link to="/content-factory/offers/new">
               <Plus className="mr-2 h-4 w-4" />
-              Создать draft
+              Создать оффер
             </Link>
           </Button>
         </div>
@@ -131,8 +182,8 @@ export default function ContentFactoryOffers() {
               <TableHead>Title</TableHead>
               <TableHead>Kind</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Expires</TableHead>
-              <TableHead>Published at</TableHead>
+              <TableHead>Updated</TableHead>
+              <TableHead>Published</TableHead>
               <TableHead className="text-right">Действия</TableHead>
             </TableRow>
           </TableHeader>
@@ -145,8 +196,14 @@ export default function ContentFactoryOffers() {
               </TableRow>
             ) : items.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
-                  Нет офферов
+                <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
+                  <p className="mb-2 font-medium text-foreground">Нет офферов</p>
+                  <p className="mx-auto max-w-md text-sm">
+                    Создайте первый оффер — опишите продукт в brief, AI соберёт A4-страницу
+                  </p>
+                  <Button asChild variant="link" className="mt-2">
+                    <Link to="/content-factory/offers/new">+ Создать оффер</Link>
+                  </Button>
                 </TableCell>
               </TableRow>
             ) : (
@@ -157,7 +214,10 @@ export default function ContentFactoryOffers() {
                     <span className="inline-flex flex-wrap items-center gap-2">
                       {o.title}
                       {isExpiringSoon(o.expires_at) && (
-                        <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-800">
+                        <Badge
+                          variant="outline"
+                          className="border-amber-300 bg-amber-50 text-amber-800"
+                        >
                           Скоро истекает
                         </Badge>
                       )}
@@ -168,15 +228,47 @@ export default function ContentFactoryOffers() {
                     <StatusBadge status={o.status} />
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {formatDate(o.expires_at)}
+                    {formatDate(o.updated_at)}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {formatDate(o.published_at)}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button variant="link" asChild className="h-auto p-0">
-                      <Link to={`/content-factory/offers/${o.id}`}>Открыть</Link>
-                    </Button>
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      <Button variant="link" asChild className="h-auto p-0">
+                        <Link to={`/content-factory/offers/${o.id}`}>Открыть</Link>
+                      </Button>
+                      {o.status === 'draft' && (
+                        <Button
+                          variant="link"
+                          className="h-auto p-0 text-green-700"
+                          disabled={busyId === o.id}
+                          onClick={() => onPublish(o)}
+                        >
+                          Publish
+                        </Button>
+                      )}
+                      {o.status === 'published' && (
+                        <Button
+                          variant="link"
+                          className="h-auto p-0"
+                          disabled={busyId === o.id}
+                          onClick={() => onUnpublish(o)}
+                        >
+                          Unpublish
+                        </Button>
+                      )}
+                      {o.status !== 'archived' && (
+                        <Button
+                          variant="link"
+                          className="h-auto p-0 text-destructive"
+                          disabled={busyId === o.id}
+                          onClick={() => onArchive(o)}
+                        >
+                          Архив
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))

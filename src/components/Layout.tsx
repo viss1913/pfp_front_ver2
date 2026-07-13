@@ -17,7 +17,6 @@ import {
   ChevronDown,
   Globe,
   Factory,
-  FileCode2,
   PackageOpen,
 } from 'lucide-react'
 import {
@@ -55,9 +54,12 @@ export default function Layout() {
   ]
 
   const contentFactoryNav = [
-    { name: 'Шаблоны', href: '/content-factory/templates', icon: FileCode2 },
     { name: 'Офферы', href: '/content-factory/offers', icon: PackageOpen },
   ]
+
+  /** Full-bleed IDE editor: no outer padding */
+  const isCfEditor =
+    /^\/content-factory\/offers\/\d+/.test(location.pathname)
 
   const superAdminNavigation = [
     { name: 'Проекты', href: '/super-admin', icon: Globe },
@@ -220,8 +222,8 @@ export default function Layout() {
             </div>
           </header>
 
-          <main className="flex-1 overflow-y-auto">
-            <div className="container mx-auto p-6">
+          <main className={isCfEditor ? 'flex-1 overflow-hidden' : 'flex-1 overflow-y-auto'}>
+            <div className={isCfEditor ? 'h-full' : 'container mx-auto p-6'}>
               <Outlet />
             </div>
           </main>

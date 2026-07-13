@@ -1,28 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, PackageOpen } from 'lucide-react'
+import { ArrowLeft, Paperclip, Send, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Switch } from '@/components/ui/switch'
-import { Badge } from '@/components/ui/badge'
 import {
+  ContentChatAttachment,
   ContentChatMessage,
   ContentOffer,
-  ContentTemplate,
+  IDE_AGENT_LABELS,
+  MediaFileKind,
+  SseProgressEvent,
   contentFactoryAPI,
   getContentFactoryErrorMessage,
 } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
-const STEPS = [
-  { id: 1, label: 'Мета' },
-  { id: 2, label: 'Payload' },
-  { id: 3, label: 'Generate' },
-  { id: 4, label: 'AI-чат' },
-  { id: 5, label: 'Publish' },
-] as const
+type PreviewViewport = 'desktop' | 'tablet' | 'a4'
 
 function toDatetimeLocal(iso?: string | null) {
   if (!iso) return ''
@@ -32,22 +27,54 @@ function toDatetimeLocal(iso?: string | null) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, string> = {
-    draft: 'bg-gray-100 text-gray-800',
+function StatusBadge({ status, dark }: { status: string; dark?: boolean }) {
+  const light: Record<string, string> = {
+    draft: 'bg-amber-100 text-amber-900',
     published: 'bg-green-100 text-green-800',
     archived: 'bg-orange-100 text-orange-800',
+  }
+  const darkMap: Record<string, string> = {
+    draft: 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/30',
+    published: 'bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/30',
+    archived: 'bg-orange-500/20 text-orange-300 ring-1 ring-orange-500/30',
+  }
+  const labels: Record<string, string> = {
+    draft: 'Черновик',
+    published: 'Опубликован',
+    archived: 'Архив',
   }
   return (
     <span
       className={cn(
         'inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium',
-        map[status] || 'bg-gray-100'
+        dark ? darkMap[status] || 'bg-white/10 text-white' : light[status] || 'bg-gray-100'
       )}
     >
-      {status}
+      {labels[status] || status}
     </span>
   )
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = reader.result as string
+      resolve(result.includes(',') ? result.split(',')[1]! : result)
+    }
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(file)
+  })
+}
+
+function guessMediaKind(file: File): MediaFileKind {
+  if (file.type.startsWith('image/')) {
+    if (/logo/i.test(file.name)) return 'logo'
+    if (/hero|banner/i.test(file.name)) return 'hero'
+    return 'logo'
+  }
+  if (/\.(csv|json|xlsx?)$/i.test(file.name)) return 'chart_data'
+  return 'other'
 }
 
 export default function ContentFactoryOfferForm() {
@@ -56,46 +83,45 @@ export default function ContentFactoryOfferForm() {
   const id = isNew ? null : Number(idParam)
   const navigate = useNavigate()
 
-  const [step, setStep] = useState(1)
   const [offer, setOffer] = useState<ContentOffer | null>(null)
-  const [templates, setTemplates] = useState<ContentTemplate[]>([])
   const [messages, setMessages] = useState<ContentChatMessage[]>([])
   const [loading, setLoading] = useState(!isNew)
   const [busy, setBusy] = useState(false)
+  const [streaming, setStreaming] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [chatInput, setChatInput] = useState('')
-  const [useLlm, setUseLlm] = useState(false)
-  const chatEndRef = useRef<HTMLDivElement>(null)
+  const [pendingAttachments, setPendingAttachments] = useState<ContentChatAttachment[]>([])
+  const [progressHistory, setProgressHistory] = useState<SseProgressEvent[]>([])
+  const [viewport, setViewport] = useState<PreviewViewport>('a4')
+  const [metaOpen, setMetaOpen] = useState(false)
 
   const [title, setTitle] = useState('')
+  const [brief, setBrief] = useState('')
   const [kind, setKind] = useState('product')
-  const [templateId, setTemplateId] = useState('')
   const [ctaUrl, setCtaUrl] = useState('')
   const [ctaLabel, setCtaLabel] = useState('Оформить')
   const [expiresAt, setExpiresAt] = useState('')
-  const [payloadText, setPayloadText] = useState(
-    JSON.stringify({ title: '', body: '' }, null, 2)
-  )
+
+  const chatEndRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const syncForm = (o: ContentOffer) => {
     setOffer(o)
     setTitle(o.title || '')
+    setBrief(o.brief || '')
     setKind(o.kind || 'product')
-    setTemplateId(o.template_id != null ? String(o.template_id) : '')
     setCtaUrl(o.cta_url_base || '')
     setCtaLabel(o.cta_label || 'Оформить')
     setExpiresAt(toDatetimeLocal(o.expires_at))
-    setPayloadText(JSON.stringify(o.payload ?? {}, null, 2))
   }
 
-  const load = useCallback(async () => {
-    setError(null)
-    try {
-      const tpls = await contentFactoryAPI.listTemplates()
-      setTemplates(tpls.filter((t) => t.is_active !== false))
-      if (id) {
-        setLoading(true)
-        const o = await contentFactoryAPI.getOffer(id)
+  const load = useCallback(
+    async (sync = false) => {
+      if (!id) return
+      setLoading(true)
+      setError(null)
+      try {
+        const o = await contentFactoryAPI.getOffer(id, { sync })
         syncForm(o)
         try {
           const msgs = await contentFactoryAPI.getChatMessages(id)
@@ -103,56 +129,42 @@ export default function ContentFactoryOfferForm() {
         } catch {
           setMessages([])
         }
+      } catch (err) {
+        setError(getContentFactoryErrorMessage(err))
+      } finally {
+        setLoading(false)
       }
-    } catch (err) {
-      setError(getContentFactoryErrorMessage(err))
-    } finally {
-      setLoading(false)
-    }
-  }, [id])
+    },
+    [id]
+  )
 
   useEffect(() => {
-    load()
-  }, [load])
+    if (!isNew) load()
+  }, [isNew, load])
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  }, [messages, progressHistory, streaming])
 
-  const parsePayload = (): Record<string, unknown> | null => {
-    try {
-      return JSON.parse(payloadText || '{}')
-    } catch {
-      alert('Payload: невалидный JSON')
-      return null
-    }
-  }
-
-  const buildBody = () => {
-    const payload = parsePayload()
-    if (payload === null) return null
-    return {
-      title: title.trim(),
-      kind: kind.trim() || 'product',
-      template_id: templateId ? Number(templateId) : null,
-      payload,
-      cta_url_base: ctaUrl.trim() || null,
-      cta_label: ctaLabel.trim() || null,
-      expires_at: expiresAt ? new Date(expiresAt).toISOString() : null,
-    }
-  }
+  const willGenerate = brief.trim().length > 0
 
   const onCreate = async () => {
     if (!title.trim()) {
       alert('Title обязателен')
       return
     }
-    const body = buildBody()
-    if (!body) return
     setBusy(true)
     setError(null)
     try {
-      const created = await contentFactoryAPI.createOffer(body)
+      const created = await contentFactoryAPI.createOffer({
+        title: title.trim(),
+        brief: brief.trim() || null,
+        kind: kind.trim() || 'product',
+        cta_url_base: ctaUrl.trim() || null,
+        cta_label: ctaLabel.trim() || null,
+        expires_at: expiresAt ? new Date(expiresAt).toISOString() : null,
+        generate: willGenerate,
+      })
       navigate(`/content-factory/offers/${created.id}`, { replace: true })
     } catch (err) {
       setError(getContentFactoryErrorMessage(err))
@@ -161,33 +173,20 @@ export default function ContentFactoryOfferForm() {
     }
   }
 
-  const onSave = async (): Promise<ContentOffer | null> => {
-    if (!id) return null
-    const body = buildBody()
-    if (!body) return null
-    setBusy(true)
-    setError(null)
-    try {
-      const updated = await contentFactoryAPI.updateOffer(id, body)
-      syncForm(updated)
-      return updated
-    } catch (err) {
-      setError(getContentFactoryErrorMessage(err))
-      return null
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const onGenerate = async () => {
+  const onSaveMeta = async () => {
     if (!id) return
-    await onSave()
     setBusy(true)
     setError(null)
     try {
-      const result = await contentFactoryAPI.generateOffer(id, useLlm)
-      syncForm(result)
-      setStep(3)
+      const updated = await contentFactoryAPI.patchOffer(id, {
+        title: title.trim(),
+        brief: brief.trim() || null,
+        kind: kind.trim() || 'product',
+        cta_url_base: ctaUrl.trim() || null,
+        cta_label: ctaLabel.trim() || null,
+        expires_at: expiresAt ? new Date(expiresAt).toISOString() : null,
+      })
+      syncForm(updated)
     } catch (err) {
       setError(getContentFactoryErrorMessage(err))
     } finally {
@@ -195,26 +194,122 @@ export default function ContentFactoryOfferForm() {
     }
   }
 
-  const onSendChat = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!id || !chatInput.trim()) return
+  const onSendChat = async () => {
+    const content = chatInput.trim()
+    if (!id || !content || streaming) return
+
+    const attachments = [...pendingAttachments]
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: 'user',
+        content,
+        attachments: attachments.length ? attachments : undefined,
+        created_at: new Date().toISOString(),
+      },
+    ])
+    setChatInput('')
+    setPendingAttachments([])
+    setStreaming(true)
+    setProgressHistory([])
+    setError(null)
+
+    try {
+      await contentFactoryAPI.postChatMessageStream(
+        id,
+        { content, attachments: attachments.length ? attachments : undefined },
+        {
+          onProgress: (p) => setProgressHistory((prev) => [...prev, p]),
+          onResult: (r) => {
+            if (r.html) {
+              setOffer((prev) => (prev ? { ...prev, generated_html: r.html } : prev))
+            }
+            if (r.assistant_message) {
+              setMessages((prev) => [
+                ...prev,
+                {
+                  role: 'assistant',
+                  content: r.assistant_message || '',
+                  created_at: new Date().toISOString(),
+                },
+              ])
+            }
+          },
+          onError: (e) => {
+            setError(e.message || e.error || 'Ошибка генерации')
+          },
+        }
+      )
+      try {
+        const o = await contentFactoryAPI.getOffer(id, { sync: true })
+        syncForm(o)
+        const msgs = await contentFactoryAPI.getChatMessages(id)
+        if (msgs.length) setMessages(msgs)
+      } catch {
+        /* keep local */
+      }
+    } catch (err) {
+      setError(getContentFactoryErrorMessage(err))
+      try {
+        const res = await contentFactoryAPI.postChatMessage(id, {
+          content,
+          attachments: attachments.length ? attachments : undefined,
+        })
+        if (res.offer) syncForm(res.offer)
+        else if (res.preview_html) {
+          setOffer((prev) =>
+            prev ? { ...prev, generated_html: res.preview_html } : prev
+          )
+        }
+        if (res.messages?.length) setMessages(res.messages)
+        else if (res.assistant_message) {
+          setMessages((prev) => [
+            ...prev,
+            { role: 'assistant', content: res.assistant_message || '' },
+          ])
+        }
+      } catch (fallbackErr) {
+        setError(getContentFactoryErrorMessage(fallbackErr))
+      }
+    } finally {
+      setStreaming(false)
+      setProgressHistory([])
+    }
+  }
+
+  const onAttachFiles = async (files: FileList | null) => {
+    if (!files?.length || !id) return
     setBusy(true)
     setError(null)
     try {
-      const res = await contentFactoryAPI.postChatMessage(id, chatInput.trim())
-      if (res.offer) syncForm(res.offer)
-      if (res.messages) setMessages(res.messages)
-      setChatInput('')
+      const uploads = await Promise.all(
+        Array.from(files).map(async (file) => ({
+          name: file.name,
+          content_base64: await fileToBase64(file),
+          content_type: file.type || 'application/octet-stream',
+          kind: guessMediaKind(file),
+        }))
+      )
+      const uploaded = await contentFactoryAPI.uploadMedia(id, uploads)
+      setPendingAttachments((prev) => [
+        ...prev,
+        ...uploaded.map((f) => ({
+          ref: f.ref || `media:${f.name}`,
+          role: f.kind || 'logo',
+          instruction: 'использовать во вёрстке',
+        })),
+      ])
     } catch (err) {
       setError(getContentFactoryErrorMessage(err))
     } finally {
       setBusy(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
 
   const onPublish = async () => {
     if (!id || !offer?.generated_html) {
-      alert('Сначала сгенерируйте HTML')
+      alert('Сначала получите HTML через чат')
       return
     }
     setBusy(true)
@@ -222,7 +317,6 @@ export default function ContentFactoryOfferForm() {
     try {
       const result = await contentFactoryAPI.publishOffer(id)
       syncForm(result)
-      setStep(5)
     } catch (err) {
       setError(getContentFactoryErrorMessage(err))
     } finally {
@@ -245,7 +339,7 @@ export default function ContentFactoryOfferForm() {
 
   const onArchive = async () => {
     if (!id) return
-    if (!window.confirm('Архивировать оффер (DELETE)?')) return
+    if (!window.confirm('Архивировать оффер?')) return
     setBusy(true)
     try {
       await contentFactoryAPI.archiveOffer(id)
@@ -256,97 +350,75 @@ export default function ContentFactoryOfferForm() {
     }
   }
 
-  if (loading) {
-    return <p className="text-sm text-muted-foreground">Загрузка…</p>
-  }
+  // ─── Create form (normal layout) ─────────────────────────
+  if (isNew) {
+    return (
+      <div className="relative space-y-6">
+        {busy && willGenerate && (
+          <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/90 px-6 text-center">
+            <div className="mb-4 h-10 w-10 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            <p className="text-lg font-semibold">AI генерирует страницу…</p>
+            <p className="mt-2 max-w-md text-sm text-muted-foreground">
+              Обычно 1–10 минут. Не закрывайте вкладку.
+            </p>
+          </div>
+        )}
 
-  const hasHtml = Boolean(offer?.generated_html)
-
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <Button variant="ghost" size="sm" asChild className="mb-2 -ml-2 h-auto px-2">
             <Link to="/content-factory/offers">
               <ArrowLeft className="mr-1 h-4 w-4" />К списку
             </Link>
           </Button>
-          <div className="flex items-center gap-2">
-            <PackageOpen className="h-7 w-7 text-primary" />
-            <h1 className="text-2xl font-bold tracking-tight">
-              {isNew ? 'Новый оффер (draft)' : `Оффер #${offer?.id}: ${offer?.title}`}
-            </h1>
-            {offer && <StatusBadge status={offer.status} />}
-          </div>
+          <h1 className="text-2xl font-bold tracking-tight">Новый оффер</h1>
+          <p className="text-sm text-muted-foreground">
+            Title + brief → AI соберёт A4. Без brief — шаблон без LLM.
+          </p>
         </div>
-        {!isNew && offer && (
-          <div className="flex flex-wrap gap-2">
-            {offer.status === 'published' && (
-              <Button variant="outline" onClick={onUnpublish} disabled={busy}>
-                Unpublish
-              </Button>
-            )}
-            <Button variant="destructive" onClick={onArchive} disabled={busy}>
-              Archive
-            </Button>
+
+        {error && (
+          <div className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            {error}
           </div>
         )}
-      </div>
 
-      {error && (
-        <div className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
-        </div>
-      )}
-
-      {!isNew && (
-        <div className="flex flex-wrap gap-1">
-          {STEPS.map((s) => (
-            <Button
-              key={s.id}
-              size="sm"
-              variant={step === s.id ? 'default' : 'outline'}
-              onClick={() => setStep(s.id)}
-            >
-              {s.id}. {s.label}
-            </Button>
-          ))}
-        </div>
-      )}
-
-      {/* Create or Meta */}
-      {(isNew || step === 1) && (
         <div className="mx-auto max-w-2xl space-y-4 rounded-lg border p-6">
-          <h2 className="text-lg font-semibold">{isNew ? 'Создать draft' : '1. Мета'}</h2>
           <div className="space-y-2">
             <Label>Title *</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} required />
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Подушка безопасности"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Brief</Label>
+            <Textarea
+              className="min-h-[140px]"
+              value={brief}
+              onChange={(e) => setBrief(e.target.value)}
+              placeholder="Одна страница A4, продукт НСЖ, логотип в шапке, CTA внизу…"
+            />
+            <p className="text-xs text-muted-foreground">
+              {willGenerate
+                ? 'generate: true — полная генерация через IDE'
+                : 'Пустой brief → generate: false'}
+            </p>
           </div>
           <div className="space-y-2">
             <Label>Kind</Label>
             <Input value={kind} onChange={(e) => setKind(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label>Template</Label>
-            <select
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              value={templateId}
-              onChange={(e) => setTemplateId(e.target.value)}
-            >
-              <option value="">— без шаблона —</option>
-              {templates.map((t) => (
-                <option key={t.id} value={t.id}>
-                  #{t.id} {t.title}
-                </option>
-              ))}
-            </select>
+            <Label>CTA URL</Label>
+            <Input
+              value={ctaUrl}
+              onChange={(e) => setCtaUrl(e.target.value)}
+              placeholder="https://partner.example/offer"
+            />
           </div>
           <div className="space-y-2">
-            <Label>cta_url_base</Label>
-            <Input value={ctaUrl} onChange={(e) => setCtaUrl(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label>cta_label</Label>
+            <Label>CTA label</Label>
             <Input value={ctaLabel} onChange={(e) => setCtaLabel(e.target.value)} />
           </div>
           <div className="space-y-2">
@@ -357,220 +429,399 @@ export default function ContentFactoryOfferForm() {
               onChange={(e) => setExpiresAt(e.target.value)}
             />
           </div>
-          {isNew && (
-            <div className="space-y-2">
-              <Label>Payload (JSON)</Label>
-              <Textarea
-                className="min-h-[140px] font-mono text-xs"
-                value={payloadText}
-                onChange={(e) => setPayloadText(e.target.value)}
-                spellCheck={false}
-              />
-            </div>
-          )}
-          <div className="flex gap-2">
-            {isNew ? (
-              <Button onClick={onCreate} disabled={busy || !title.trim()}>
-                {busy ? 'Создание…' : 'Создать draft'}
-              </Button>
-            ) : (
-              <>
-                <Button onClick={onSave} disabled={busy}>
-                  Сохранить
-                </Button>
-                <Button variant="secondary" onClick={() => setStep(2)}>
-                  Далее → Payload
-                </Button>
-              </>
-            )}
-          </div>
+          <Button onClick={onCreate} disabled={busy || !title.trim()}>
+            {busy
+              ? 'Создание…'
+              : willGenerate
+                ? 'Создать и сгенерировать'
+                : 'Создать черновик'}
+          </Button>
         </div>
-      )}
-
-      {!isNew && step === 2 && (
-        <div className="mx-auto max-w-2xl space-y-4 rounded-lg border p-6">
-          <h2 className="text-lg font-semibold">2. Payload (JSON)</h2>
-          <p className="text-xs text-muted-foreground">
-            Ключи → placeholders в шаблоне
-          </p>
-          <Textarea
-            className="min-h-[280px] font-mono text-xs"
-            value={payloadText}
-            onChange={(e) => setPayloadText(e.target.value)}
-            spellCheck={false}
-          />
-          <div className="flex gap-2">
-            <Button onClick={onSave} disabled={busy}>
-              Сохранить
-            </Button>
-            <Button variant="secondary" onClick={() => setStep(3)}>
-              Далее → Generate
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {!isNew && step === 3 && (
-        <div className="grid gap-6 lg:grid-cols-2">
-          <div className="space-y-4 rounded-lg border p-6">
-            <h2 className="text-lg font-semibold">3. Generate HTML</h2>
-            <p className="text-sm text-muted-foreground">
-              POST /admin/content-factory/offers/{'{id}'}/generate
-            </p>
-            <div className="flex items-center gap-2">
-              <Switch checked={useLlm} onCheckedChange={setUseLlm} id="use_llm" />
-              <Label htmlFor="use_llm">use_llm (полировка LLM)</Label>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button onClick={onGenerate} disabled={busy}>
-                {busy ? 'Генерация…' : 'Generate'}
-              </Button>
-              <Button variant="outline" onClick={() => setStep(4)}>
-                Далее → AI-чат
-              </Button>
-            </div>
-            {!hasHtml && (
-              <p className="text-sm text-amber-700">
-                Publish недоступен без generated_html
-              </p>
-            )}
-          </div>
-          <HtmlPreview html={offer?.generated_html} />
-        </div>
-      )}
-
-      {!isNew && step === 4 && (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <HtmlPreview html={offer?.generated_html} height={560} />
-          <div className="flex h-[560px] flex-col overflow-hidden rounded-lg border">
-            <div className="border-b px-4 py-3">
-              <h2 className="text-lg font-semibold">4. AI-чат</h2>
-              <p className="text-xs text-muted-foreground">
-                LLM ~5–30 сек. 422 = CTA удалён AI
-              </p>
-            </div>
-            <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
-              {messages.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  История пуста. Например: «увеличь заголовок»
-                </p>
-              )}
-              {messages.map((m, i) => (
-                <div
-                  key={m.id ?? i}
-                  className={cn(
-                    'max-w-[90%] rounded-md px-3 py-2 text-sm',
-                    m.role === 'user'
-                      ? 'ml-auto bg-primary text-primary-foreground'
-                      : 'mr-auto bg-muted'
-                  )}
-                >
-                  <div className="mb-0.5 text-[10px] uppercase opacity-70">{m.role}</div>
-                  <div className="whitespace-pre-wrap">{m.content}</div>
-                </div>
-              ))}
-              <div ref={chatEndRef} />
-            </div>
-            <form onSubmit={onSendChat} className="flex gap-2 border-t p-3">
-              <Input
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                placeholder="Текст правки…"
-                disabled={busy || !hasHtml}
-              />
-              <Button type="submit" disabled={busy || !chatInput.trim() || !hasHtml}>
-                {busy ? '…' : 'Send'}
-              </Button>
-            </form>
-            <div className="border-t px-3 py-2">
-              <Button variant="ghost" size="sm" onClick={() => setStep(5)}>
-                Далее → Publish
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {!isNew && step === 5 && (
-        <div className="grid gap-6 lg:grid-cols-2">
-          <div className="space-y-4 rounded-lg border p-6">
-            <h2 className="text-lg font-semibold">5. Publish</h2>
-            <p className="text-sm text-muted-foreground">
-              В каталог агентов. Disabled без generated_html.
-            </p>
-            <dl className="grid grid-cols-2 gap-2 text-sm">
-              <dt className="text-muted-foreground">Status</dt>
-              <dd>{offer && <StatusBadge status={offer.status} />}</dd>
-              <dt className="text-muted-foreground">Published at</dt>
-              <dd>
-                {offer?.published_at
-                  ? new Date(offer.published_at).toLocaleString('ru-RU')
-                  : '—'}
-              </dd>
-              <dt className="text-muted-foreground">Has HTML</dt>
-              <dd>
-                {hasHtml ? (
-                  <Badge className="bg-green-100 text-green-800 hover:bg-green-100">да</Badge>
-                ) : (
-                  'нет'
-                )}
-              </dd>
-            </dl>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                onClick={onPublish}
-                disabled={busy || !hasHtml || offer?.status === 'published'}
-              >
-                Publish
-              </Button>
-              {offer?.status === 'published' && (
-                <Button variant="outline" onClick={onUnpublish} disabled={busy}>
-                  Unpublish → draft
-                </Button>
-              )}
-            </div>
-            {!hasHtml && (
-              <p className="text-sm text-destructive">
-                Publish недоступен: нет generated_html
-              </p>
-            )}
-          </div>
-          <HtmlPreview html={offer?.generated_html} />
-        </div>
-      )}
-    </div>
-  )
-}
-
-function HtmlPreview({
-  html,
-  height = 420,
-}: {
-  html?: string | null
-  height?: number
-}) {
-  if (!html) {
-    return (
-      <div
-        className="flex items-center justify-center rounded-lg border border-dashed text-sm text-muted-foreground"
-        style={{ minHeight: height }}
-      >
-        Нет HTML для превью
       </div>
     )
   }
-  return (
-    <div className="overflow-hidden rounded-lg border">
-      <div className="border-b bg-muted px-3 py-1.5 text-xs text-muted-foreground">
-        generated_html preview
+
+  if (loading) {
+    return <p className="text-sm text-muted-foreground">Загрузка редактора…</p>
+  }
+
+  if (!offer) {
+    return (
+      <div>
+        <p className="mb-2 text-sm text-destructive">Оффер не найден</p>
+        <Button asChild variant="link">
+          <Link to="/content-factory/offers">К списку</Link>
+        </Button>
       </div>
-      <iframe
-        title="offer-preview"
-        sandbox=""
-        srcDoc={html}
-        className="w-full bg-white"
-        style={{ height, border: 0 }}
+    )
+  }
+
+  const hasHtml = Boolean(offer.generated_html)
+
+  // ─── IDE editor ──────────────────────────────────────────
+  return (
+    <div className="-m-6 flex h-[calc(100vh-4rem)] min-h-[520px] flex-col bg-[#0f1419] text-[#e5e7eb]">
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        multiple
+        accept="image/*,.pdf,.csv,.json,.svg"
+        onChange={(e) => onAttachFiles(e.target.files)}
       />
+
+      {/* Top bar */}
+      <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-[#2a3344] bg-[#1a1f2e] px-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <Link
+            to="/content-factory/offers"
+            className="flex shrink-0 items-center gap-1 text-sm text-[#9ca3af] hover:text-white"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Офферы
+          </Link>
+          <StatusBadge status={offer.status} dark />
+          <h1 className="truncate text-sm font-semibold sm:text-base" title={offer.title}>
+            {offer.title}
+          </h1>
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-[#2a3344] bg-transparent text-[#9ca3af] hover:bg-[#121820] hover:text-white"
+            onClick={() => load(true)}
+            disabled={busy || streaming}
+          >
+            <RefreshCw className="mr-1 h-3.5 w-3.5" />
+            Sync
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-[#2a3344] bg-transparent text-[#c5cdd8] hover:bg-[#121820]"
+            onClick={() => setMetaOpen(true)}
+          >
+            Настройки CTA
+          </Button>
+          {offer.status === 'published' ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-[#2a3344] bg-transparent text-white hover:bg-[#121820]"
+              onClick={onUnpublish}
+              disabled={busy}
+            >
+              Снять с публикации
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              className="bg-[#111827] text-white hover:bg-black"
+              onClick={onPublish}
+              disabled={busy || !hasHtml || offer.status === 'archived'}
+            >
+              Опубликовать
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-red-400 hover:bg-red-950/40 hover:text-red-300"
+            onClick={onArchive}
+            disabled={busy || offer.status === 'archived'}
+          >
+            Архив
+          </Button>
+        </div>
+      </header>
+
+      {error && (
+        <div className="border-b border-red-900/50 bg-red-950/40 px-4 py-2 text-sm text-red-300">
+          {error}
+        </div>
+      )}
+
+      {/* Split 45/55 */}
+      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,45%)_minmax(0,55%)]">
+        {/* Chat */}
+        <section className="flex min-h-[280px] flex-col border-b border-[#2a3344] bg-[#121820] lg:min-h-0 lg:border-b-0 lg:border-r">
+          <div className="border-b border-[#2a3344] px-4 py-2.5">
+            <h2 className="text-sm font-semibold">Чат с AI</h2>
+            <p className="text-[11px] text-[#6b7280]">
+              Планировщик → БА → Программист · SSE
+            </p>
+          </div>
+
+          <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3">
+            {messages.length === 0 && !streaming && (
+              <p className="text-sm text-[#6b7280]">
+                Опишите правку или задачу — AI обновит A4-страницу.
+              </p>
+            )}
+            {messages.map((m, i) => (
+              <div
+                key={m.id ?? `msg-${i}`}
+                className={cn(
+                  'max-w-[92%] rounded-lg px-3 py-2 text-sm',
+                  m.role === 'user'
+                    ? 'ml-auto bg-[#1e3a5f] text-[#e8f0fe]'
+                    : 'mr-auto bg-[#1e2633] text-[#e5e7eb]'
+                )}
+              >
+                <div className="mb-0.5 text-[10px] uppercase tracking-wide opacity-60">
+                  {m.role === 'user' ? 'Вы' : 'Ассистент'}
+                </div>
+                <div className="whitespace-pre-wrap">{m.content}</div>
+                {m.attachments && m.attachments.length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap gap-1">
+                    {m.attachments.map((a) => (
+                      <span
+                        key={a.ref}
+                        className="inline-flex items-center gap-1 rounded bg-black/20 px-2 py-0.5 text-[11px]"
+                      >
+                        📎 {a.ref.replace(/^media:/, '')}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {(streaming || progressHistory.length > 0) && (
+              <div className="space-y-1.5 font-mono text-xs">
+                {progressHistory.map((p, i) => {
+                  const label = IDE_AGENT_LABELS[p.agent || ''] || p.agent || 'Агент'
+                  const isLast = i === progressHistory.length - 1
+                  return (
+                    <div
+                      key={`${p.agent}-${i}-${p.message}`}
+                      className="flex items-start gap-2 rounded-lg border border-[#2a3344] bg-[#0a0e14]/60 px-3 py-2 text-[#9ca3af]"
+                    >
+                      <span
+                        className={cn(
+                          'mt-1 h-1.5 w-1.5 shrink-0 rounded-full',
+                          isLast
+                            ? 'animate-pulse bg-indigo-400'
+                            : 'bg-emerald-500/70'
+                        )}
+                      />
+                      <div>
+                        <span className="font-semibold text-indigo-300">{label}</span>
+                        {p.status && (
+                          <span className="ml-1.5 text-[10px] uppercase opacity-60">
+                            {p.status}
+                          </span>
+                        )}
+                        {p.message && (
+                          <div className="mt-0.5 text-[#c5cdd8]">
+                            {p.message}
+                            {isLast && streaming && <span className="animate-pulse">…</span>}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+            <div ref={chatEndRef} />
+          </div>
+
+          {pendingAttachments.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 border-t border-[#2a3344] px-3 py-2">
+              {pendingAttachments.map((a) => (
+                <span
+                  key={a.ref}
+                  className="inline-flex items-center gap-1 rounded-md border border-[#2a3344] bg-[#0a0e14] px-2 py-1 text-xs"
+                >
+                  📎 {a.ref.replace(/^media:/, '')}
+                  <button
+                    type="button"
+                    className="ml-1 text-[#6b7280] hover:text-white"
+                    onClick={() =>
+                      setPendingAttachments((prev) => prev.filter((x) => x.ref !== a.ref))
+                    }
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-end gap-2 border-t border-[#2a3344] p-3">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={busy || streaming}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#2a3344] text-[#9ca3af] hover:bg-[#1e2633] hover:text-white disabled:opacity-40"
+              title="Прикрепить файл"
+            >
+              <Paperclip className="h-4 w-4" />
+            </button>
+            <textarea
+              className="min-h-[40px] max-h-32 flex-1 resize-y rounded-lg border border-[#2a3344] bg-[#0a0e14] px-3 py-2 text-sm text-[#e5e7eb] placeholder:text-[#6b7280] focus:border-indigo-500 focus:outline-none disabled:opacity-50"
+              rows={2}
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  if (!streaming && chatInput.trim()) onSendChat()
+                }
+              }}
+              placeholder="Правка или задача…"
+              disabled={busy || streaming}
+            />
+            <button
+              type="button"
+              onClick={onSendChat}
+              disabled={busy || streaming || !chatInput.trim()}
+              className="flex h-10 shrink-0 items-center gap-1 rounded-lg bg-indigo-600 px-4 text-sm font-semibold text-white hover:bg-indigo-500 disabled:opacity-40"
+            >
+              {streaming ? '…' : <Send className="h-4 w-4" />}
+              {!streaming && 'Отправить'}
+            </button>
+          </div>
+        </section>
+
+        {/* Preview */}
+        <section className="flex min-h-[320px] flex-col bg-[#0a0e14] lg:min-h-0">
+          <div className="flex items-center justify-between border-b border-[#2a3344] px-3 py-2">
+            <span className="text-xs font-medium uppercase tracking-wide text-[#6b7280]">
+              Preview
+            </span>
+            <div className="inline-flex rounded-lg border border-[#2a3344] bg-[#121820] p-0.5">
+              {(['desktop', 'tablet', 'a4'] as PreviewViewport[]).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setViewport(v)}
+                  className={cn(
+                    'rounded-md px-2.5 py-1 text-xs font-medium capitalize transition-colors',
+                    viewport === v
+                      ? 'bg-[#2a3344] text-white'
+                      : 'text-[#9ca3af] hover:text-white'
+                  )}
+                >
+                  {v === 'a4' ? 'A4' : v}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex min-h-0 flex-1 items-start justify-center overflow-auto p-4">
+            {!hasHtml ? (
+              <div className="flex h-full min-h-[240px] w-full items-center justify-center rounded-lg border border-dashed border-[#2a3344] text-sm text-[#6b7280]">
+                Создайте оффер или отправьте первую правку в чат
+              </div>
+            ) : (
+              <div
+                className={cn(
+                  'overflow-hidden bg-white shadow-2xl shadow-black/40',
+                  viewport === 'a4' ? 'rounded-sm' : 'h-full rounded-lg'
+                )}
+                style={
+                  viewport === 'desktop'
+                    ? { width: '100%', maxWidth: 1280, height: '100%' }
+                    : viewport === 'tablet'
+                      ? { width: 768, maxWidth: '100%', height: '100%' }
+                      : {
+                          width: 'min(100%, 420px)',
+                          aspectRatio: '210 / 297',
+                          maxHeight: '100%',
+                        }
+                }
+              >
+                <iframe
+                  title="preview"
+                  sandbox="allow-same-origin"
+                  srcDoc={offer.generated_html || ''}
+                  className="h-full w-full border-0 bg-white"
+                  style={viewport === 'a4' ? { minHeight: '100%' } : { minHeight: 480 }}
+                />
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
+
+      {/* Meta collapsible */}
+      <div className="border-t border-[#2a3344] bg-[#0f1419]">
+        <button
+          type="button"
+          onClick={() => setMetaOpen((v) => !v)}
+          className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm font-medium text-[#c5cdd8] hover:bg-[#121820]"
+        >
+          <span>▼ Настройки оффера</span>
+          <span className="text-xs text-[#6b7280]">
+            {metaOpen ? 'свернуть' : 'развернуть'}
+          </span>
+        </button>
+        {metaOpen && (
+          <div className="grid gap-3 border-t border-[#2a3344] px-4 py-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <label className="mb-1 block text-xs text-[#6b7280]">Title</label>
+              <input
+                className="w-full rounded-lg border border-[#2a3344] bg-[#0a0e14] px-3 py-2 text-sm"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-[#6b7280]">Kind</label>
+              <input
+                className="w-full rounded-lg border border-[#2a3344] bg-[#0a0e14] px-3 py-2 text-sm"
+                value={kind}
+                onChange={(e) => setKind(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-[#6b7280]">CTA URL</label>
+              <input
+                className="w-full rounded-lg border border-[#2a3344] bg-[#0a0e14] px-3 py-2 text-sm"
+                value={ctaUrl}
+                onChange={(e) => setCtaUrl(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-[#6b7280]">CTA label</label>
+              <input
+                className="w-full rounded-lg border border-[#2a3344] bg-[#0a0e14] px-3 py-2 text-sm"
+                value={ctaLabel}
+                onChange={(e) => setCtaLabel(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-[#6b7280]">Срок</label>
+              <input
+                type="datetime-local"
+                className="w-full rounded-lg border border-[#2a3344] bg-[#0a0e14] px-3 py-2 text-sm"
+                value={expiresAt}
+                onChange={(e) => setExpiresAt(e.target.value)}
+              />
+            </div>
+            <div className="sm:col-span-2 lg:col-span-3">
+              <label className="mb-1 block text-xs text-[#6b7280]">Brief</label>
+              <textarea
+                className="min-h-[64px] w-full rounded-lg border border-[#2a3344] bg-[#0a0e14] px-3 py-2 text-sm"
+                value={brief}
+                onChange={(e) => setBrief(e.target.value)}
+              />
+            </div>
+            <div>
+              <Button
+                size="sm"
+                className="bg-[#1e2633] text-white hover:bg-[#2a3344]"
+                onClick={onSaveMeta}
+                disabled={busy}
+              >
+                {busy ? 'Сохранение…' : 'Сохранить настройки'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
