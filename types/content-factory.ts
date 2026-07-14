@@ -4,12 +4,39 @@ export type OfferStatus = "draft" | "published" | "archived";
 
 export type IdeAgentId = "orchestrator" | "site_architect" | "code_generator";
 
+export type TemplateOrientation = "portrait" | "landscape";
+export type TemplateTheme = "light" | "dark";
+
+export const DEFAULT_TEMPLATE_ID = "finam-a4-portrait-light";
+
+export const MIN_PAGE_COUNT = 1;
+export const MAX_PAGE_COUNT = 20;
+export const DEFAULT_PAGE_COUNT = 1;
+
+export function clampPageCount(value: number): number {
+  const n = Math.round(Number(value));
+  if (!Number.isFinite(n)) return DEFAULT_PAGE_COUNT;
+  return Math.min(MAX_PAGE_COUNT, Math.max(MIN_PAGE_COUNT, n));
+}
+
+export type ContentFactoryTemplate = {
+  id: string;
+  title: string;
+  orientation?: TemplateOrientation;
+  theme?: TemplateTheme;
+  format?: string;
+  page_size?: string;
+  preview_url: string;
+};
+
 export type ContentOffer = {
   id: number;
   project_id: number;
   title: string;
   kind: string;
   brief?: string | null;
+  base_template_id?: string | null;
+  page_count?: number;
   ide_session_id?: string | null;
   cta_url_base?: string | null;
   cta_label?: string | null;
@@ -24,6 +51,8 @@ export type ContentOffer = {
 export type ContentOfferCreate = {
   title: string;
   brief?: string | null;
+  base_template_id?: string;
+  page_count?: number;
   kind?: string;
   cta_url_base?: string | null;
   cta_label?: string | null;
@@ -35,6 +64,7 @@ export type ContentOfferPatch = {
   title?: string;
   brief?: string | null;
   kind?: string;
+  base_template_id?: string;
   cta_url_base?: string | null;
   cta_label?: string | null;
   expires_at?: string | null;

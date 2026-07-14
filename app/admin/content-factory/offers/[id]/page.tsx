@@ -10,7 +10,7 @@ import OfferHtmlPreview, {
   type PreviewViewport,
 } from "@/components/admin/content-factory/OfferHtmlPreview";
 import OfferMetaPanel from "@/components/admin/content-factory/OfferMetaPanel";
-import { getApiErrorMessage, offersApi } from "@/lib/content-factory-api";
+import { getApiErrorMessage, offersApi, templatesApi } from "@/lib/content-factory-api";
 import { useAdminAuthStore } from "@/store/admin-auth-store";
 import type {
   ChatAttachment,
@@ -83,6 +83,7 @@ export default function OfferEditorPage() {
   const [ctaLabel, setCtaLabel] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
   const [brief, setBrief] = useState("");
+  const [baseTemplateTitle, setBaseTemplateTitle] = useState<string | null>(null);
 
   const syncForm = (o: ContentOffer) => {
     setOffer(o);
@@ -119,6 +120,26 @@ export default function OfferEditorPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (!isReady() || !offer?.base_template_id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { templates } = await templatesApi.list(projectKey, token);
+        if (cancelled) return;
+        const match = templates.find((t) => t.id === offer.base_template_id);
+        setBaseTemplateTitle(match?.title ?? offer.base_template_id ?? null);
+      } catch {
+        if (!cancelled) {
+          setBaseTemplateTitle(offer.base_template_id ?? null);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [offer?.base_template_id, isReady, projectKey, token]);
 
   const onSaveMeta = async () => {
     if (!id) return;
@@ -408,6 +429,9 @@ export default function OfferEditorPage() {
             ctaLabel={ctaLabel}
             expiresAt={expiresAt}
             brief={brief}
+            baseTemplateId={offer.base_template_id}
+            baseTemplateTitle={baseTemplateTitle}
+            pageCount={offer.page_count}
             onTitleChange={setTitle}
             onKindChange={setKind}
             onCtaUrlChange={setCtaUrl}

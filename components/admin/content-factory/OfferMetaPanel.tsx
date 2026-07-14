@@ -10,6 +10,9 @@ type Props = {
   ctaLabel: string;
   expiresAt: string;
   brief: string;
+  baseTemplateId?: string | null;
+  baseTemplateTitle?: string | null;
+  pageCount?: number | null;
   onTitleChange: (v: string) => void;
   onKindChange: (v: string) => void;
   onCtaUrlChange: (v: string) => void;
@@ -31,6 +34,9 @@ export default function OfferMetaPanel({
   ctaLabel,
   expiresAt,
   brief,
+  baseTemplateId,
+  baseTemplateTitle,
+  pageCount,
   onTitleChange,
   onKindChange,
   onCtaUrlChange,
@@ -79,6 +85,27 @@ export default function OfferMetaPanel({
             value={kind}
             onChange={(e) => onKindChange(e.target.value)}
             placeholder="product"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs text-[#6b7280]">
+            Базовый шаблон A4
+          </label>
+          <input
+            className={clsx(fieldClass, "cursor-not-allowed opacity-80")}
+            value={baseTemplateTitle || baseTemplateId || "—"}
+            readOnly
+            title={baseTemplateId || undefined}
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs text-[#6b7280]">
+            Страниц A4
+          </label>
+          <input
+            className={clsx(fieldClass, "cursor-not-allowed opacity-80")}
+            value={pageCount ?? "—"}
+            readOnly
           />
         </div>
         <div>

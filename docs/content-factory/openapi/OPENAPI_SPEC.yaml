@@ -23,7 +23,7 @@ servers:
 
 tags:
   - name: ContentFactoryAdmin
-    description: Admin — offers, chat (SSE), media, publish
+    description: Admin — templates picker, offers, chat (SSE), media, publish
   - name: ContentFactoryAgent
     description: Agent LK — catalog, presentations, PDF, email
 
@@ -49,6 +49,52 @@ paths:
                   version: { type: string }
                   llm: { type: string }
                   grokTerminal: { type: boolean }
+
+  /admin/content-factory/templates:
+    get:
+      tags: [ContentFactoryAdmin]
+      summary: List base A4 HTML templates (admin picker)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/XProjectKey'
+      responses:
+        '200':
+          description: Template catalog with preview_url per item
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [templates]
+                properties:
+                  templates:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ContentFactoryTemplate'
+
+  /admin/content-factory/templates/{templateId}/preview:
+    get:
+      tags: [ContentFactoryAdmin]
+      summary: HTML preview of base template (fetch + iframe srcDoc)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/XProjectKey'
+        - name: templateId
+          in: path
+          required: true
+          schema:
+            type: string
+            example: finam-a4-portrait-light
+      responses:
+        '200':
+          description: Self-contained HTML document
+          content:
+            text/html:
+              schema:
+                type: string
+        '404':
+          description: Unknown template id
 
   /admin/content-factory/offers:
     get:
@@ -423,6 +469,16 @@ components:
         title: { type: string }
         kind: { type: string, example: product }
         brief: { type: string, nullable: true }
+        base_template_id:
+          type: string
+          example: finam-a4-portrait-light
+          description: Selected base A4 template (see GET /admin/content-factory/templates)
+        page_count:
+          type: integer
+          minimum: 1
+          maximum: 20
+          default: 1
+          description: A4 pages in one HTML (IDE constraints.page_count)
         ide_session_id: { type: string, format: uuid, nullable: true }
         cta_url_base: { type: string, nullable: true }
         cta_label: { type: string, nullable: true }
@@ -440,6 +496,15 @@ components:
         title: { type: string }
         brief: { type: string, nullable: true }
         kind: { type: string, default: product }
+        base_template_id:
+          type: string
+          description: Base A4 template id from GET /admin/content-factory/templates
+          example: finam-a4-portrait-light
+        page_count:
+          type: integer
+          minimum: 1
+          maximum: 20
+          default: 1
         cta_url_base: { type: string }
         cta_label: { type: string }
         expires_at: { type: string, format: date-time }
@@ -447,12 +512,47 @@ components:
           type: boolean
           description: Default true when brief is set; false = A4 template only
 
+    ContentFactoryTemplate:
+      type: object
+      required: [id, title, preview_url]
+      properties:
+        id:
+          type: string
+          example: finam-a4-portrait-light
+        title:
+          type: string
+          example: A4 вертикальный — светлый
+        orientation:
+          type: string
+          enum: [portrait, landscape]
+        theme:
+          type: string
+          enum: [light, dark]
+        format:
+          type: string
+          example: a4
+        page_size:
+          type: string
+          example: 210x297mm
+        preview_url:
+          type: string
+          description: Relative path; GET with Bearer returns text/html for srcDoc
+          example: /api/admin/content-factory/templates/finam-a4-portrait-light/preview
+
     ContentOfferPatch:
       type: object
       properties:
         title: { type: string }
         brief: { type: string }
         kind: { type: string }
+        base_template_id:
+          type: string
+          description: Only before ide_session_id exists
+        page_count:
+          type: integer
+          minimum: 1
+          maximum: 20
+          description: Only before ide_session_id exists
         cta_url_base: { type: string }
         cta_label: { type: string }
         expires_at: { type: string, format: date-time, nullable: true }

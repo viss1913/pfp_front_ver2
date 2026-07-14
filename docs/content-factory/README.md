@@ -6,6 +6,7 @@ HTML генерирует **IDE API** (server-to-server), фронт ходит 
 | Документ | Для кого |
 |----------|----------|
 | [ADMIN_CONTENT_FACTORY_IDE_TASK.md](./ADMIN_CONTENT_FACTORY_IDE_TASK.md) | Разработчик админки — экраны, API, состояния, миграция со старого UI |
+| [ADMIN_TEMPLATE_PICKER_TASK.md](./ADMIN_TEMPLATE_PICKER_TASK.md) | **Сейчас в работу:** выбор A4-шаблона + preview на `/offers/new` |
 | [DESIGN_PROMPT_UI.md](./DESIGN_PROMPT_UI.md) | Дизайнер / генерация макета (Figma, v0, Midjourney UI) |
 | [openapi/OPENAPI_SPEC.yaml](./openapi/OPENAPI_SPEC.yaml) | HTTP-контракт Content Factory v1 (IDE integration) |
 
@@ -13,10 +14,10 @@ HTML генерирует **IDE API** (server-to-server), фронт ходит 
 
 | Было (v0.1, откатили) | Стало (v1 IDE) |
 |------------------------|----------------|
-| Шаблоны + Payload JSON | **Brief** + чат с AI |
+| Шаблоны + Payload JSON | **Brief** + чат с AI + **picker A4-шаблона** на create |
 | Wizard: Мета → Payload → Generate → Чат | **Один экран**: чат слева + preview справа |
 | `POST .../generate` + OpenRouter в PFP | Генерация через IDE при create/chat |
-| `templates/*` routes | **Убрать** из навигации (API templates нет) |
+| `templates/*` routes (старый CRUD) | **Убрать** legacy routes; picker на `/offers/new` через API templates |
 
 ## Роуты Next.js (целевые)
 
@@ -24,7 +25,7 @@ HTML генерирует **IDE API** (server-to-server), фронт ходит 
 |-----|--------|
 | `/admin/content-factory` | → redirect на `/admin/content-factory/offers` |
 | `/admin/content-factory/offers` | Список офферов |
-| `/admin/content-factory/offers/new` | Создание (title + brief) |
+| `/admin/content-factory/offers/new` | Создание (picker шаблона + title + brief) |
 | `/admin/content-factory/offers/[id]` | **Редактор IDE-like** (главный экран) |
 
 Удалить или спрятать: `/admin/content-factory/templates/*`

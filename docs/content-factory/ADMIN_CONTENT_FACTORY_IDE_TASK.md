@@ -58,9 +58,13 @@ GET /api/admin/content-factory/offers?status=draft|published|archived
 
 **Route:** `/admin/content-factory/offers/new`
 
+> **Детальная постановка по выбору шаблона:** [ADMIN_TEMPLATE_PICKER_TASK.md](./ADMIN_TEMPLATE_PICKER_TASK.md)
+
 ### API
 
 ```
+GET /api/admin/content-factory/templates
+GET /api/admin/content-factory/templates/{templateId}/preview
 POST /api/admin/content-factory/offers
 ```
 
@@ -70,6 +74,7 @@ POST /api/admin/content-factory/offers
 {
   "title": "Подушка безопасности",
   "brief": "Одна страница A4, продукт НСЖ, логотип в шапке, CTA внизу",
+  "base_template_id": "finam-a4-portrait-light",
   "kind": "product",
   "cta_url_base": "https://partner.example/offer",
   "cta_label": "Оформить",
@@ -79,6 +84,7 @@ POST /api/admin/content-factory/offers
 
 | Поле | UI |
 |------|-----|
+| `base_template_id` | **picker 4 шаблонов** с preview (см. отдельную задачу) |
 | `title` | обязательное |
 | `brief` | textarea, необязательно; если пусто — A4-шаблон без LLM |
 | `cta_url_base`, `cta_label` | опционально на create, можно позже в редакторе |
@@ -256,9 +262,9 @@ Publish disabled если нет `generated_html` или нет `data-cta-slot` 
 | `app/admin/content-factory/page.tsx` | redirect → `/offers`, не `/templates` |
 | `app/admin/content-factory/templates/*` | удалить или 410 stub |
 | `app/admin/content-factory/offers/[id]/page.tsx` | **переписать**: убрать wizard steps Payload/Generate, сделать split chat+preview |
-| `app/admin/content-factory/offers/new/page.tsx` | title + brief вместо template_id + payload |
-| `lib/content-factory-api.ts` | убрать templatesApi, generate; добавить patch, media, SSE chat, health |
-| `types/content-factory.ts` | `ide_session_id`, `brief`; убрать template_id/payload обязательность |
+| `app/admin/content-factory/offers/new/page.tsx` | picker шаблона + title + brief (см. ADMIN_TEMPLATE_PICKER_TASK) |
+| `lib/content-factory-api.ts` | добавить `templatesApi.list` + `fetchPreviewHtml`; patch, media, SSE chat, health |
+| `types/content-factory.ts` | `base_template_id`, `ide_session_id`, `brief` |
 
 ---
 

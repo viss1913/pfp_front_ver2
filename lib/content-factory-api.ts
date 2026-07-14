@@ -2,6 +2,7 @@ import axios, { AxiosError, type AxiosInstance } from "axios";
 import type {
   ChatMessage,
   ChatPostResponse,
+  ContentFactoryTemplate,
   ContentOffer,
   ContentOfferChatRequest,
   ContentOfferCreate,
@@ -35,6 +36,20 @@ export function adminHeaders(projectKey: string, token: string) {
 
 function headers(projectKey: string, token: string) {
   return { headers: adminHeaders(projectKey, token) };
+}
+
+/** preview_url from API is relative (/api/admin/...); baseURL already ends with /api */
+function resolveApiPath(relativePath: string): string {
+  if (relativePath.startsWith("http://") || relativePath.startsWith("https://")) {
+    return relativePath;
+  }
+  if (relativePath.startsWith("/api/")) {
+    return `${baseURL}${relativePath.slice(4)}`;
+  }
+  if (relativePath.startsWith("/")) {
+    return `${baseURL}${relativePath}`;
+  }
+  return `${baseURL}/${relativePath}`;
 }
 
 /** Parse API error for UI toasts */
@@ -156,6 +171,43 @@ function parseSseChunk(
 
   return rest;
 }
+
+// ─── Templates ───────────────────────────────────────────────
+
+export const templatesApi = {
+  list: async (
+    projectKey: string,
+    token: string
+  ): Promise<{ templates: ContentFactoryTemplate[] }> => {
+    const { data } = await contentFactoryApi.get(
+      "/admin/content-factory/templates",
+      headers(projectKey, token)
+    );
+    if (data && Array.isArray((data as { templates?: unknown }).templates)) {
+      return data as { templates: ContentFactoryTemplate[] };
+    }
+    return { templates: unwrapList<ContentFactoryTemplate>(data) };
+  },
+
+  fetchPreviewHtml: async (
+    previewUrl: string,
+    projectKey: string,
+    token: string
+  ): Promise<string> => {
+    const url = resolveApiPath(previewUrl);
+    const res = await fetch(url, {
+      headers: adminHeaders(projectKey, token),
+    });
+    if (!res.ok) {
+      const err = new Error(
+        res.status === 404 ? "Шаблон не найден" : `HTTP ${res.status}`
+      ) as Error & { status?: number };
+      err.status = res.status;
+      throw err;
+    }
+    return res.text();
+  },
+};
 
 // ─── Offers ──────────────────────────────────────────────────
 
