@@ -9,13 +9,19 @@ import {
   ContentChatAttachment,
   ContentChatMessage,
   ContentOffer,
+  DEFAULT_PAGE_COUNT,
+  DEFAULT_TEMPLATE_ID,
   IDE_AGENT_LABELS,
+  MAX_PAGE_COUNT,
+  MIN_PAGE_COUNT,
   MediaFileKind,
   SseProgressEvent,
+  clampPageCount,
   contentFactoryAPI,
   getContentFactoryErrorMessage,
 } from '@/lib/api'
 import { cn } from '@/lib/utils'
+import TemplatePicker from './components/TemplatePicker'
 
 type PreviewViewport = 'desktop' | 'tablet' | 'a4'
 
@@ -102,6 +108,9 @@ export default function ContentFactoryOfferForm() {
   const [ctaUrl, setCtaUrl] = useState('')
   const [ctaLabel, setCtaLabel] = useState('Оформить')
   const [expiresAt, setExpiresAt] = useState('')
+  const [selectedTemplateId, setSelectedTemplateId] = useState(DEFAULT_TEMPLATE_ID)
+  const [pageCount, setPageCount] = useState(String(DEFAULT_PAGE_COUNT))
+  const [baseTemplateTitle, setBaseTemplateTitle] = useState<string | null>(null)
 
   const chatEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -144,14 +153,38 @@ export default function ContentFactoryOfferForm() {
   }, [isNew, load])
 
   useEffect(() => {
+    if (isNew || !offer?.base_template_id) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const templates = await contentFactoryAPI.listTemplates()
+        if (cancelled) return
+        const match = templates.find((t) => t.id === offer.base_template_id)
+        setBaseTemplateTitle(match?.title ?? offer.base_template_id ?? null)
+      } catch {
+        if (!cancelled) setBaseTemplateTitle(offer.base_template_id ?? null)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [isNew, offer?.base_template_id])
+
+  useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, progressHistory, streaming])
 
   const willGenerate = brief.trim().length > 0
+  const parsedPageCount = clampPageCount(Number(pageCount))
+  const canCreate = Boolean(title.trim() && selectedTemplateId)
 
   const onCreate = async () => {
     if (!title.trim()) {
       alert('Title обязателен')
+      return
+    }
+    if (!selectedTemplateId) {
+      alert('Выберите базовый шаблон A4')
       return
     }
     setBusy(true)
@@ -160,6 +193,8 @@ export default function ContentFactoryOfferForm() {
       const created = await contentFactoryAPI.createOffer({
         title: title.trim(),
         brief: brief.trim() || null,
+        base_template_id: selectedTemplateId,
+        page_count: parsedPageCount,
         kind: kind.trim() || 'product',
         cta_url_base: ctaUrl.trim() || null,
         cta_label: ctaLabel.trim() || null,
@@ -374,7 +409,7 @@ export default function ContentFactoryOfferForm() {
           </Button>
           <h1 className="text-2xl font-bold tracking-tight">Новый оффер</h1>
           <p className="text-sm text-muted-foreground">
-            Title + brief → AI соберёт A4. Без brief — шаблон без LLM.
+            Выберите корпоративный шаблон Finam, затем задайте параметры оффера.
           </p>
         </div>
 
@@ -384,7 +419,22 @@ export default function ContentFactoryOfferForm() {
           </div>
         )}
 
-        <div className="mx-auto max-w-2xl space-y-4 rounded-lg border p-6">
+        <div className="space-y-6">
+          <div className="space-y-4 rounded-lg border p-6">
+            <div>
+              <h2 className="text-lg font-semibold">Шаг 1. Базовый шаблон A4</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Шаблон задаёт ориентацию и тему. Контент правится в редакторе через чат.
+              </p>
+            </div>
+            <TemplatePicker
+              selectedTemplateId={selectedTemplateId}
+              onSelect={setSelectedTemplateId}
+            />
+          </div>
+
+          <div className="mx-auto max-w-2xl space-y-4 rounded-lg border p-6">
+            <h2 className="text-lg font-semibold">Шаг 2. Параметры оффера</h2>
           <div className="space-y-2">
             <Label>Title *</Label>
             <Input
@@ -405,6 +455,23 @@ export default function ContentFactoryOfferForm() {
               {willGenerate
                 ? 'generate: true — полная генерация через IDE'
                 : 'Пустой brief → generate: false'}
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label>
+              Страниц A4 ({MIN_PAGE_COUNT}–{MAX_PAGE_COUNT})
+            </Label>
+            <Input
+              type="number"
+              min={MIN_PAGE_COUNT}
+              max={MAX_PAGE_COUNT}
+              step={1}
+              value={pageCount}
+              onChange={(e) => setPageCount(e.target.value)}
+              onBlur={() => setPageCount(String(parsedPageCount))}
+            />
+            <p className="text-xs text-muted-foreground">
+              Сколько A4-листов в одном HTML-документе
             </p>
           </div>
           <div className="space-y-2">
@@ -431,13 +498,14 @@ export default function ContentFactoryOfferForm() {
               onChange={(e) => setExpiresAt(e.target.value)}
             />
           </div>
-          <Button onClick={onCreate} disabled={busy || !title.trim()}>
+          <Button onClick={onCreate} disabled={busy || !canCreate}>
             {busy
               ? 'Создание…'
               : willGenerate
                 ? 'Создать и сгенерировать'
                 : 'Создать черновик'}
           </Button>
+          </div>
         </div>
       </div>
     )
@@ -777,6 +845,25 @@ export default function ContentFactoryOfferForm() {
                   className="w-full rounded-md border border-[#2a3344] bg-[#0a0e14] px-2 py-1.5 text-sm"
                   value={kind}
                   onChange={(e) => setKind(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="mb-0.5 block text-[11px] text-[#6b7280]">
+                  Базовый шаблон A4
+                </label>
+                <input
+                  className="w-full cursor-not-allowed rounded-md border border-[#2a3344] bg-[#0a0e14] px-2 py-1.5 text-sm opacity-80"
+                  value={baseTemplateTitle || offer.base_template_id || '—'}
+                  readOnly
+                  title={offer.base_template_id || undefined}
+                />
+              </div>
+              <div>
+                <label className="mb-0.5 block text-[11px] text-[#6b7280]">Страниц A4</label>
+                <input
+                  className="w-full cursor-not-allowed rounded-md border border-[#2a3344] bg-[#0a0e14] px-2 py-1.5 text-sm opacity-80"
+                  value={offer.page_count ?? '—'}
+                  readOnly
                 />
               </div>
               <div>

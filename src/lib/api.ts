@@ -1198,7 +1198,31 @@ export const IDE_AGENT_LABELS: Record<string, string> = {
   code_generator: 'Программист',
 }
 
-/** @deprecated templates API removed in CF v1 — kept for type compatibility */
+export type TemplateOrientation = 'portrait' | 'landscape'
+export type TemplateTheme = 'light' | 'dark'
+
+export const DEFAULT_TEMPLATE_ID = 'finam-a4-portrait-light'
+export const MIN_PAGE_COUNT = 1
+export const MAX_PAGE_COUNT = 20
+export const DEFAULT_PAGE_COUNT = 1
+
+export function clampPageCount(value: number): number {
+  const n = Math.round(Number(value))
+  if (!Number.isFinite(n)) return DEFAULT_PAGE_COUNT
+  return Math.min(MAX_PAGE_COUNT, Math.max(MIN_PAGE_COUNT, n))
+}
+
+export interface ContentFactoryTemplate {
+  id: string
+  title: string
+  orientation?: TemplateOrientation
+  theme?: TemplateTheme
+  format?: string
+  page_size?: string
+  preview_url: string
+}
+
+/** @deprecated legacy CRUD templates — use ContentFactoryTemplate picker */
 export interface ContentTemplate {
   id: number
   project_id: number
@@ -1224,6 +1248,8 @@ export interface ContentOffer {
   title: string
   kind: string
   brief?: string | null
+  base_template_id?: string | null
+  page_count?: number
   ide_session_id?: string | null
   cta_url_base?: string | null
   cta_label?: string | null
@@ -1241,6 +1267,8 @@ export interface ContentOffer {
 export interface ContentOfferCreate {
   title: string
   brief?: string | null
+  base_template_id?: string
+  page_count?: number
   kind?: string
   cta_url_base?: string | null
   cta_label?: string | null
@@ -1252,6 +1280,8 @@ export interface ContentOfferPatch {
   title?: string
   brief?: string | null
   kind?: string
+  base_template_id?: string
+  page_count?: number
   cta_url_base?: string | null
   cta_label?: string | null
   expires_at?: string | null
@@ -1414,6 +1444,19 @@ function parseSseChunk(buffer: string, handlers: ChatStreamHandlers): string {
   return rest
 }
 
+function resolveContentFactoryPath(relativePath: string): string {
+  if (relativePath.startsWith('http://') || relativePath.startsWith('https://')) {
+    return relativePath
+  }
+  if (relativePath.startsWith('/api/')) {
+    return relativePath.slice(4)
+  }
+  if (relativePath.startsWith('/')) {
+    return relativePath
+  }
+  return `/${relativePath}`
+}
+
 export const contentFactoryAPI = {
   listOffers: async (status?: OfferStatus | ''): Promise<ContentOffer[]> => {
     const response = await api.get('/admin/content-factory/offers', {
@@ -1540,6 +1583,48 @@ export const contentFactoryAPI = {
   healthIde: async (): Promise<Record<string, unknown>> => {
     const response = await api.get('/admin/content-factory/health/ide')
     return response.data
+  },
+  listTemplates: async (): Promise<ContentFactoryTemplate[]> => {
+    const response = await api.get('/admin/content-factory/templates')
+    const data = response.data as { templates?: ContentFactoryTemplate[] }
+    if (Array.isArray(data?.templates)) return data.templates
+    return unwrapList<ContentFactoryTemplate>(response.data)
+  },
+  fetchTemplatePreviewHtml: async (previewUrl: string): Promise<string> => {
+    const path = resolveContentFactoryPath(previewUrl)
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      const token = localStorage.getItem('token')
+      const projectKey = localStorage.getItem('project_key')
+      const res = await fetch(path, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...(projectKey ? { 'X-Project-Key': projectKey } : {}),
+        },
+      })
+      if (!res.ok) {
+        const err = new Error(res.status === 404 ? 'Шаблон не найден' : `HTTP ${res.status}`) as Error & {
+          status?: number
+        }
+        err.status = res.status
+        throw err
+      }
+      return res.text()
+    }
+    try {
+      const response = await api.get<string>(path, {
+        responseType: 'text',
+        transformResponse: [(data) => data],
+        headers: { Accept: 'text/html' },
+      })
+      return response.data
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response?.status === 404) {
+        const notFound = new Error('Шаблон не найден') as Error & { status?: number }
+        notFound.status = 404
+        throw notFound
+      }
+      throw err
+    }
   },
 }
 
